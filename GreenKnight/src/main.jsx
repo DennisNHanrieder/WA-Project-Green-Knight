@@ -6,15 +6,14 @@ import Layout from "./components/Layout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import MeinePflanzen from "./pages/MeinePflanzen.jsx";
 import Wiki from "./pages/Wiki.jsx";
+import "./i18n/i18n.js";
 
 const theme = createTheme({
   palette: {
-    primary: { main: "#388E3C" }, // sattes Grün 🌿
+    primary: { main: "#388E3C" },
     secondary: { main: "#81C784" },
   },
-  typography: {
-    fontFamily: "Roboto, sans-serif",
-  },
+  typography: { fontFamily: "Roboto, sans-serif" },
 });
 
 const router = createBrowserRouter([

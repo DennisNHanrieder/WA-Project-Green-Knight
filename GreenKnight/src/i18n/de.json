@@ -1,0 +1,20 @@
+{
+  "app": {
+    "title": "🌿 Green Knight",
+    "dashboard": "Dashboard",
+    "myPlants": "Meine Pflanzen",
+    "wiki": "Wiki"
+  },
+  "dashboard": {
+    "title": "📅 Deine heutigen To-Dos",
+    "subtitle": "Hier siehst du alle Aufgaben für heute."
+  },
+  "plants": {
+    "title": "🌱 Deine Pflanzen",
+    "subtitle": "Pflege deine Pflanzen und füge neue hinzu."
+  },
+  "wiki": {
+    "title": "📖 Pflanzen-Wiki",
+    "subtitle": "Hier findest du Informationen zu Pflanzenpflege, Licht & Gießen."
+  }
+}

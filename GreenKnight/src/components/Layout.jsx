@@ -1,24 +1,27 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { AppBar, Toolbar, Typography, Tabs, Tab, Box } from "@mui/material";
+import { AppBar, Toolbar, Typography, Tabs, Tab, Box, Button } from "@mui/material";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 export default function Layout() {
   const location = useLocation();
+  const { t, i18n } = useTranslation();
   const [value, setValue] = useState(0);
 
-  // Aktiven Tab je nach Route setzen
   useEffect(() => {
     if (location.pathname === "/") setValue(0);
     else if (location.pathname === "/meine-pflanzen") setValue(1);
     else if (location.pathname === "/wiki") setValue(2);
   }, [location.pathname]);
 
+  const toggleLanguage = () => {
+    i18n.changeLanguage(i18n.language === "de" ? "en" : "de");
+  };
+
   return (
     <>
       <AppBar position="static">
-        {/* Toolbar mit zwei Ebenen: Logo + zentrierte Tabs */}
         <Toolbar sx={{ position: "relative", justifyContent: "center" }}>
-          {/* Logo bleibt links fixiert */}
           <Typography
             variant="h6"
             sx={{
@@ -28,20 +31,27 @@ export default function Layout() {
               transform: "translateY(-50%)",
             }}
           >
-            🌿 Green Knight
+            {t("app.title")}
           </Typography>
 
-          {/* Tabs wirklich zentriert */}
-          <Tabs
-            value={value}
-            textColor="inherit"
-            indicatorColor="secondary"
-            centered
-          >
-            <Tab label="Dashboard" component={Link} to="/" />
-            <Tab label="Meine Pflanzen" component={Link} to="/meine-pflanzen" />
-            <Tab label="Wiki" component={Link} to="/wiki" />
+          <Tabs value={value} textColor="inherit" indicatorColor="secondary" centered>
+            <Tab label={t("app.dashboard")} component={Link} to="/" />
+            <Tab label={t("app.myPlants")} component={Link} to="/meine-pflanzen" />
+            <Tab label={t("app.wiki")} component={Link} to="/wiki" />
           </Tabs>
+
+          <Button
+            color="inherit"
+            sx={{
+              position: "absolute",
+              right: 16,
+              top: "50%",
+              transform: "translateY(-50%)",
+            }}
+            onClick={toggleLanguage}
+          >
+            {i18n.language === "de" ? "EN" : "DE"}
+          </Button>
         </Toolbar>
       </AppBar>
 

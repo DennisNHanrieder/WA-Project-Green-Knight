@@ -57,3 +57,47 @@ const wikiEntries = [
       "Monstera liebt helles, indirektes Licht und regelmäßiges Besprühen der Blätter.",
   },
 ];
+
+
+// ---------- API-Routen ----------
+
+// Test
+app.get("/api/hello", (req, res) => {
+  res.json({ message: "Hello from PlantCare API!" });
+});
+
+// Pflanzen
+app.get("/api/plants", (req, res) => res.json(plants));
+app.get("/api/plants/:id", (req, res) => {
+  const plant = plants.find((p) => p.id === Number(req.params.id));
+  if (!plant) return res.status(404).send("Pflanze nicht gefunden");
+  res.json(plant);
+});
+app.post("/api/plants/:id/todos", (req, res) => {
+  const plant = plants.find((p) => p.id === Number(req.params.id));
+  if (!plant) return res.status(404).send("Pflanze nicht gefunden");
+  const newTodo = {
+    id: plant.todos.length + 1,
+    task: req.body.task,
+    done: false,
+  };
+  plant.todos.push(newTodo);
+  res.status(201).json(newTodo);
+});
+
+// Wiki
+app.get("/api/wiki", (req, res) => res.json(wikiEntries));
+app.get("/api/wiki/:id", (req, res) => {
+  const entry = wikiEntries.find((e) => e.id === Number(req.params.id));
+  if (!entry) return res.status(404).send("Eintrag nicht gefunden");
+  res.json(entry);
+});
+app.post("/api/wiki", (req, res) => {
+  const newEntry = {
+    id: wikiEntries.length + 1,
+    title: req.body.title,
+    content: req.body.content,
+  };
+  wikiEntries.push(newEntry);
+  res.status(201).json(newEntry);
+});

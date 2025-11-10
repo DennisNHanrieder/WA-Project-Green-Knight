@@ -101,3 +101,10 @@ app.post("/api/wiki", (req, res) => {
   wikiEntries.push(newEntry);
   res.status(201).json(newEntry);
 });
+
+// ---------- React-Frontend ----------
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+app.use(express.static("dist"));
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
+});

@@ -25,3 +25,35 @@ app.use("/api/secure", (req, res, next) => {
   }
   next();
 });
+
+
+// ---------- Mock-Daten ----------
+const plants = [
+  {
+    id: 1,
+    name: "Aloe Vera",
+    todos: [
+      { id: 1, task: "Gießen", done: false },
+      { id: 2, task: "Düngen", done: true },
+    ],
+  },
+  {
+    id: 2,
+    name: "Monstera",
+    todos: [{ id: 1, task: "Umtopfen", done: false }],
+  },
+];
+
+const wikiEntries = [
+  {
+    id: 1,
+    title: "Aloe Vera Pflege",
+    content: "Aloe Vera bevorzugt sonnige Standorte und mäßiges Gießen.",
+  },
+  {
+    id: 2,
+    title: "Monstera Pflege",
+    content:
+      "Monstera liebt helles, indirektes Licht und regelmäßiges Besprühen der Blätter.",
+  },
+];

@@ -108,3 +108,8 @@ app.use(express.static("dist"));
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
+
+// ---------- Server starten ----------
+app.listen(port, () =>
+  console.log(`🌿 PlantCare Server läuft auf http://localhost:${port}`)
+);

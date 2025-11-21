@@ -1,3 +1,4 @@
+// src/pages/MeinePflanzen.jsx
 import { useEffect, useState } from "react";
 import {
   Typography,
@@ -9,159 +10,190 @@ import {
   TextField,
   Button,
 } from "@mui/material";
+import { useAuth } from "../auth/AuthContext";
 
 export default function MeinePflanzen() {
+  const { accessToken } = useAuth();
   const [plants, setPlants] = useState([]);
   const [newPlantName, setNewPlantName] = useState("");
   const [newTodos, setNewTodos] = useState({});
+  const [error, setError] = useState(null);
 
-  const loadPlants = () => {
-    fetch("/api/plants")
-      .then((res) => res.json())
-      .then((data) => setPlants(data))
-      .catch((err) => console.error("Fehler beim Laden:", err));
+  const authHeaders = {
+    Authorization: `Bearer ${accessToken}`,
+    "Content-Type": "application/json",
+  };
+
+  const loadPlants = async () => {
+    if (!accessToken) return;
+    try {
+      const res = await fetch("/api/plants", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Fehler ${res.status}`);
+      }
+
+      const data = await res.json();
+      setPlants(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
   };
 
   useEffect(() => {
     loadPlants();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
 
-  const handleToggle = (plantId, todoIndex, newValue) => {
-    fetch(`/api/plants/${plantId}/todos/${todoIndex}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ done: newValue }),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Update fehlgeschlagen");
-        setPlants((prev) =>
-          prev.map((p) =>
-            p._id === plantId
-              ? {
-                  ...p,
-                  todos: p.todos.map((todo, i) =>
-                    i === todoIndex ? { ...todo, done: newValue } : todo
-                  ),
-                }
-              : p
-          )
-        );
-      })
-      .catch((err) => console.error(err));
+  const handleAddPlant = async () => {
+    if (!newPlantName.trim()) return;
+    try {
+      const res = await fetch("/api/plants", {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ name: newPlantName }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Fehler ${res.status}`);
+      }
+
+      setNewPlantName("");
+      await loadPlants();
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
   };
 
-  const handleAddPlant = () => {
-    if (newPlantName.trim() === "") return;
+  const handleDeletePlant = async (id) => {
+    try {
+      const res = await fetch(`/api/plants/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
 
-    fetch("/api/plants", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newPlantName }),
-    })
-      .then((res) => res.json())
-      .then((newPlant) => {
-        setPlants((prev) => [...prev, newPlant]);
-        setNewPlantName("");
-      })
-      .catch((err) => console.error("Fehler beim Hinzufügen:", err));
+      if (!res.ok && res.status !== 204) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Fehler ${res.status}`);
+      }
+
+      await loadPlants();
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
   };
 
-  const handleAddTodo = (plantId) => {
-    const text = newTodos[plantId]?.trim();
+  const handleAddTodo = async (plantId) => {
+    const text = (newTodos[plantId] || "").trim();
     if (!text) return;
 
-    fetch(`/api/plants/${plantId}/todos`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ task: text, done: false }),
-    })
-      .then((res) => res.json())
-      .then((updatedPlant) => {
-        setPlants((prev) =>
-          prev.map((p) => (p._id === plantId ? updatedPlant : p))
-        );
-        setNewTodos((prev) => ({ ...prev, [plantId]: "" }));
-      })
-      .catch((err) => console.error("Fehler beim Hinzufügen des To-Dos:", err));
-  };
+    try {
+      const res = await fetch(`/api/plants/${plantId}/todos`, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ task: text, done: false }),
+      });
 
-  // ❌ Pflanze löschen
-  const handleDeletePlant = (plantId) => {
-    if (!window.confirm("Diese Pflanze wirklich löschen?")) return;
-
-    fetch(`/api/plants/${plantId}`, { method: "DELETE" })
-      .then((res) => {
-        if (res.status === 204) {
-          setPlants((prev) => prev.filter((p) => p._id !== plantId));
-        } else {
-          console.error("Fehler beim Löschen");
-        }
-      })
-      .catch((err) => console.error("Fehler beim Löschen:", err));
-  };
-
-  //ToDo löschen
-  const handleDeleteTodo = (plantId, todoIndex) => {
-  if (!window.confirm("Dieses To-Do wirklich löschen?")) return;
-
-  fetch(`/api/plants/${plantId}/todos/${todoIndex}`, { method: "DELETE" })
-    .then((res) => {
-      if (res.status === 204) {
-        setPlants((prev) =>
-          prev.map((p) =>
-            p._id === plantId
-              ? {
-                  ...p,
-                  todos: p.todos.filter((_, i) => i !== todoIndex),
-                }
-              : p
-          )
-        );
-      } else {
-        console.error("Fehler beim Löschen");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Fehler ${res.status}`);
       }
-    })
-    .catch((err) => console.error("Fehler beim Löschen:", err));
-};
 
+      setNewTodos((prev) => ({ ...prev, [plantId]: "" }));
+      await loadPlants();
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
+  };
+
+  const handleToggleTodo = async (plantId, index, done) => {
+    try {
+      const res = await fetch(`/api/plants/${plantId}/todos/${index}`, {
+        method: "PUT",
+        headers: authHeaders,
+        body: JSON.stringify({ done }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Fehler ${res.status}`);
+      }
+
+      await loadPlants();
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
+  };
+
+  const handleDeleteTodo = async (plantId, index) => {
+    try {
+      const res = await fetch(`/api/plants/${plantId}/todos/${index}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!res.ok && res.status !== 204) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Fehler ${res.status}`);
+      }
+
+      await loadPlants();
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
+  };
 
   return (
-    <Stack spacing={2}>
-      <Typography variant="h5">🌿 Meine Pflanzen</Typography>
+    <Stack spacing={2} sx={{ p: 2 }}>
+      <Typography variant="h4" gutterBottom>
+        Meine Pflanzen
+      </Typography>
 
-      {/* Neue Pflanze hinzufügen */}
-      <Stack direction="row" spacing={1}>
+      {error && (
+        <Typography color="error" variant="body2">
+          {error}
+        </Typography>
+      )}
+
+      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
         <TextField
           label="Neue Pflanze"
-          variant="outlined"
           value={newPlantName}
           onChange={(e) => setNewPlantName(e.target.value)}
-          fullWidth
+          size="small"
         />
         <Button variant="contained" onClick={handleAddPlant}>
           Hinzufügen
         </Button>
       </Stack>
 
-      {/* Pflanzenliste */}
       {plants.map((plant) => (
-        <Card key={plant._id} variant="outlined">
+        <Card key={plant._id}>
           <CardContent>
-            <Stack direction="row" justifyContent="space-between">
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
               <Typography variant="h6">{plant.name}</Typography>
               <Button
                 variant="outlined"
                 color="error"
                 onClick={() => handleDeletePlant(plant._id)}
               >
-                ❌ Löschen
+                Löschen
               </Button>
             </Stack>
 
-            {/* To-Do-Liste */}
-            {plant.todos && plant.todos.length > 0 ? (
-              <Stack spacing={1} sx={{ mt: 1 }}>
-                {plant.todos.map((todo, index) => (
+            <Stack spacing={1} sx={{ mt: 2 }}>
+              {(plant.todos || []).map((todo, index) => (
                 <Stack
                   key={index}
                   direction="row"
@@ -171,50 +203,43 @@ export default function MeinePflanzen() {
                   <FormControlLabel
                     control={
                       <Checkbox
-                        checked={todo.done}
+                        checked={!!todo.done}
                         onChange={(e) =>
-                          handleToggle(plant._id, index, e.target.checked)
+                          handleToggleTodo(plant._id, index, e.target.checked)
                         }
                       />
                     }
                     label={todo.task}
                   />
                   <Button
-                    variant="outlined"
-                    color="error"
                     size="small"
+                    color="error"
                     onClick={() => handleDeleteTodo(plant._id, index)}
                   >
-                    🗑️
+                    X
                   </Button>
                 </Stack>
               ))}
 
+              <Stack direction="row" spacing={1}>
+                <TextField
+                  size="small"
+                  label="Neues To-Do"
+                  value={newTodos[plant._id] || ""}
+                  onChange={(e) =>
+                    setNewTodos((prev) => ({
+                      ...prev,
+                      [plant._id]: e.target.value,
+                    }))
+                  }
+                />
+                <Button
+                  variant="contained"
+                  onClick={() => handleAddTodo(plant._id)}
+                >
+                  ➕
+                </Button>
               </Stack>
-            ) : (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Keine Aufgaben vorhanden.
-              </Typography>
-            )}
-
-            {/* Neues To-Do hinzufügen */}
-            <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-              <TextField
-                label="Neues To-Do"
-                variant="outlined"
-                size="small"
-                value={newTodos[plant._id] || ""}
-                onChange={(e) =>
-                  setNewTodos({ ...newTodos, [plant._id]: e.target.value })
-                }
-                fullWidth
-              />
-              <Button
-                variant="contained"
-                onClick={() => handleAddTodo(plant._id)}
-              >
-                ➕
-              </Button>
             </Stack>
           </CardContent>
         </Card>

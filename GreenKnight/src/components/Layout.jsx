@@ -1,6 +1,6 @@
-// src/components/Layout.jsx (Ausschnitt)
+// src/components/Layout.jsx
 import React from 'react';
-import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Tabs, Tab } from '@mui/material';
 import { useAuth } from '../auth/AuthContext';
 
@@ -31,18 +31,16 @@ export default function Layout() {
             Green Knight
           </Typography>
 
-          {isAuthenticated && (
+          {isAuthenticated ? (
             <>
               <Typography variant="body2" sx={{ mr: 2 }}>
-                Eingeloggt als {user.username}
+                Eingeloggt als {user?.username}
               </Typography>
               <Button color="inherit" onClick={handleLogout}>
                 Logout
               </Button>
             </>
-          )}
-
-          {!isAuthenticated && (
+          ) : (
             <>
               <Button color="inherit" onClick={() => navigate('/login')}>
                 Login

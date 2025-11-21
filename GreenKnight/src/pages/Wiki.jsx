@@ -1,3 +1,4 @@
+// src/pages/Wiki.jsx
 import { useEffect, useState } from "react";
 import {
   Typography,
@@ -7,163 +8,205 @@ import {
   TextField,
   Button,
 } from "@mui/material";
+import { useAuth } from "../auth/AuthContext";
 
 export default function Wiki() {
+  const { accessToken } = useAuth();
   const [entries, setEntries] = useState([]);
   const [newEntry, setNewEntry] = useState({ title: "", content: "" });
-  const [editing, setEditing] = useState(null); // ID des Eintrags, der bearbeitet wird
+  const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState({ title: "", content: "" });
+  const [error, setError] = useState(null);
 
-  // Einträge laden
-  const loadEntries = () => {
-    fetch("/api/wiki")
-      .then((res) => res.json())
-      .then((data) => setEntries(data))
-      .catch((err) => console.error("Fehler beim Laden:", err));
+  const authHeaders = {
+    Authorization: `Bearer ${accessToken}`,
+    "Content-Type": "application/json",
+  };
+
+  const loadEntries = async () => {
+    if (!accessToken) return;
+    try {
+      const res = await fetch("/api/wiki", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Fehler ${res.status}`);
+      }
+
+      const data = await res.json();
+      setEntries(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
   };
 
   useEffect(() => {
     loadEntries();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
 
-  // Neuen Eintrag speichern
-  const handleAdd = () => {
+  const handleCreate = async () => {
     if (!newEntry.title.trim() || !newEntry.content.trim()) return;
+    try {
+      const res = await fetch("/api/wiki", {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify(newEntry),
+      });
 
-    fetch("/api/wiki", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newEntry),
-    })
-      .then((res) => res.json())
-      .then((entry) => {
-        setEntries((prev) => [...prev, entry]);
-        setNewEntry({ title: "", content: "" });
-      })
-      .catch((err) => console.error("Fehler beim Hinzufügen:", err));
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Fehler ${res.status}`);
+      }
+
+      setNewEntry({ title: "", content: "" });
+      await loadEntries();
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
   };
 
-  // Bearbeiten starten
-  const handleEditStart = (entry) => {
+  const startEdit = (entry) => {
     setEditing(entry._id);
     setEditData({ title: entry.title, content: entry.content });
   };
 
-  // Änderungen speichern
-  const handleEditSave = (id) => {
-    fetch(`/api/wiki/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editData),
-    })
-      .then((res) => res.json())
-      .then((updated) => {
-        setEntries((prev) =>
-          prev.map((e) => (e._id === id ? updated : e))
-        );
-        setEditing(null);
-      })
-      .catch((err) => console.error("Fehler beim Bearbeiten:", err));
+  const handleSaveEdit = async (id) => {
+    try {
+      const res = await fetch(`/api/wiki/${id}`, {
+        method: "PUT",
+        headers: authHeaders,
+        body: JSON.stringify(editData),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Fehler ${res.status}`);
+      }
+
+      setEditing(null);
+      setEditData({ title: "", content: "" });
+      await loadEntries();
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
   };
 
-  // Löschen
-  const handleDelete = (id) => {
-    if (!window.confirm("Diesen Eintrag wirklich löschen?")) return;
-    fetch(`/api/wiki/${id}`, { method: "DELETE" })
-      .then(() => setEntries((prev) => prev.filter((e) => e._id !== id)))
-      .catch((err) => console.error("Fehler beim Löschen:", err));
+  const handleDelete = async (id) => {
+    try {
+      const res = await fetch(`/api/wiki/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!res.ok && res.status !== 204) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Fehler ${res.status}`);
+      }
+
+      await loadEntries();
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
   };
 
   return (
-    <Stack spacing={3}>
-      <Typography variant="h5">📖 Pflanzen-Wiki</Typography>
+    <Stack spacing={2} sx={{ p: 2 }}>
+      <Typography variant="h4" gutterBottom>
+        Wiki
+      </Typography>
 
-      {/* Formular für neuen Eintrag */}
-      <Card variant="outlined">
+      {error && (
+        <Typography color="error" variant="body2">
+          {error}
+        </Typography>
+      )}
+
+      <Card>
         <CardContent>
-          <Typography variant="h6">Neuen Eintrag erstellen</Typography>
-          <TextField
-            label="Titel"
-            variant="outlined"
-            value={newEntry.title}
-            onChange={(e) =>
-              setNewEntry({ ...newEntry, title: e.target.value })
-            }
-            fullWidth
-            sx={{ mt: 1 }}
-          />
-          <TextField
-            label="Inhalt"
-            variant="outlined"
-            multiline
-            minRows={3}
-            value={newEntry.content}
-            onChange={(e) =>
-              setNewEntry({ ...newEntry, content: e.target.value })
-            }
-            fullWidth
-            sx={{ mt: 1 }}
-          />
-          <Button variant="contained" sx={{ mt: 1 }} onClick={handleAdd}>
-            Hinzufügen
-          </Button>
+          <Typography variant="h6">Neuer Eintrag</Typography>
+          <Stack spacing={1} sx={{ mt: 1 }}>
+            <TextField
+              label="Titel"
+              value={newEntry.title}
+              onChange={(e) =>
+                setNewEntry((prev) => ({ ...prev, title: e.target.value }))
+              }
+            />
+            <TextField
+              label="Inhalt"
+              multiline
+              minRows={3}
+              value={newEntry.content}
+              onChange={(e) =>
+                setNewEntry((prev) => ({ ...prev, content: e.target.value }))
+              }
+            />
+            <Button variant="contained" onClick={handleCreate}>
+              Speichern
+            </Button>
+          </Stack>
         </CardContent>
       </Card>
 
-      {/* Liste vorhandener Einträge */}
       {entries.map((entry) => (
-        <Card key={entry._id} variant="outlined">
+        <Card key={entry._id}>
           <CardContent>
             {editing === entry._id ? (
-              <>
+              <Stack spacing={1}>
                 <TextField
                   label="Titel"
-                  fullWidth
                   value={editData.title}
                   onChange={(e) =>
-                    setEditData({ ...editData, title: e.target.value })
+                    setEditData((prev) => ({ ...prev, title: e.target.value }))
                   }
                 />
                 <TextField
                   label="Inhalt"
-                  fullWidth
                   multiline
                   minRows={3}
-                  sx={{ mt: 1 }}
                   value={editData.content}
                   onChange={(e) =>
-                    setEditData({ ...editData, content: e.target.value })
+                    setEditData((prev) => ({
+                      ...prev,
+                      content: e.target.value,
+                    }))
                   }
                 />
-                <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                <Stack direction="row" spacing={1}>
                   <Button
                     variant="contained"
-                    color="primary"
-                    onClick={() => handleEditSave(entry._id)}
+                    onClick={() => handleSaveEdit(entry._id)}
                   >
-                    💾 Speichern
+                    Speichern
                   </Button>
                   <Button
                     variant="outlined"
-                    color="secondary"
-                    onClick={() => setEditing(null)}
+                    onClick={() => {
+                      setEditing(null);
+                      setEditData({ title: "", content: "" });
+                    }}
                   >
                     Abbrechen
                   </Button>
                 </Stack>
-              </>
+              </Stack>
             ) : (
               <>
                 <Typography variant="h6">{entry.title}</Typography>
-                <Typography variant="body1" sx={{ mt: 1 }}>
+                <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
                   {entry.content}
                 </Typography>
                 <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                  <Button
-                    variant="outlined"
-                    onClick={() => handleEditStart(entry)}
-                  >
-                    ✏️ Bearbeiten
+                  <Button variant="outlined" onClick={() => startEdit(entry)}>
+                    Bearbeiten
                   </Button>
                   <Button
                     variant="outlined"

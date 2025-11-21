@@ -98,7 +98,6 @@ export function AuthProvider({ children }) {
         throw new Error(data.error || 'Registration failed');
       }
 
-      // Registrierung erfolgreich – kein Auto-Login, Nutzer geht zum Login
       return await res.json();
     } catch (err) {
       console.error(err);
@@ -147,7 +146,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // (Optional) Auto-Refresh kurz vor Ablauf
+  // Auto-Refresh kurz vor Ablauf
   useEffect(() => {
     if (!user?.exp) return;
 
@@ -158,7 +157,6 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    // 30 Sekunden vor Expiry refreshen
     const timeout = setTimeout(() => {
       refreshAccessToken();
     }, Math.max(1000, (secondsLeft - 30) * 1000));

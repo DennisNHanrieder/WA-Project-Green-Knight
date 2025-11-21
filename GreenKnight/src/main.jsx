@@ -1,10 +1,8 @@
 // src/main.jsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import {
-  createBrowserRouter,
-  RouterProvider,
-} from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { ThemeProvider, CssBaseline, createTheme } from '@mui/material';
 
 import AppLayout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -16,15 +14,14 @@ import ProtectedRoute from './auth/ProtectedRoute';
 import { AuthProvider } from './auth/AuthContext';
 
 import './i18n/i18n';
-import { ThemeProvider, CssBaseline } from '@mui/material';
-import theme from './theme'; // falls du eins hast; sonst weglassen
 
+// ---------- Router-Konfiguration ----------
 const router = createBrowserRouter([
   {
     path: '/',
     element: <AppLayout />,
     children: [
-      // Public routes
+      // öffentliche Routen
       { path: 'login', element: <Login /> },
       { path: 'register', element: <Register /> },
       {
@@ -32,9 +29,9 @@ const router = createBrowserRouter([
         element: <div>Keine Berechtigung</div>,
       },
 
-      // Protected routes
+      // geschützte Routen
       {
-        element: <ProtectedRoute />, // alle Child-Routen sind geschützt
+        element: <ProtectedRoute />,
         children: [
           { index: true, element: <Dashboard /> },
           { path: 'meine-pflanzen', element: <MeinePflanzen /> },
@@ -45,6 +42,10 @@ const router = createBrowserRouter([
   },
 ]);
 
+// sehr simples MUI-Theme
+const theme = createTheme();
+
+// ---------- Render ----------
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>

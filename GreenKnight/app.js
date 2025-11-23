@@ -405,7 +405,7 @@ app.get("/api/wiki/:id", async (req, res) => {
 });
 
 // Wiki-Eintrag erstellen (nur Admin)
-app.post("/api/wiki", authorizeRoles("admin"), async (req, res) => {
+app.post("/api/wiki", authorizeRoles("admin", "user"), async (req, res) => {
   try {
     const db = req.app.get("db");
     const result = await db.collection("wiki").insertOne(req.body);
@@ -420,7 +420,7 @@ app.post("/api/wiki", authorizeRoles("admin"), async (req, res) => {
 });
 
 // Wiki-Eintrag bearbeiten (nur Admin)
-app.put("/api/wiki/:id", authorizeRoles("admin"), async (req, res) => {
+app.put("/api/wiki/:id", authorizeRoles("admin", "user"), async (req, res) => {
   try {
     const db = req.app.get("db");
     const id = new ObjectId(req.params.id);
@@ -443,7 +443,7 @@ app.put("/api/wiki/:id", authorizeRoles("admin"), async (req, res) => {
 });
 
 // Wiki-Eintrag löschen (nur Admin)
-app.delete("/api/wiki/:id", authorizeRoles("admin"), async (req, res) => {
+app.delete("/api/wiki/:id", authorizeRoles("admin", "user"), async (req, res) => {
   try {
     const db = req.app.get("db");
     const id = new ObjectId(req.params.id);

@@ -9,8 +9,10 @@ import {
   FormControlLabel,
   TextField,
   Button,
+  Box
 } from "@mui/material";
 import { useAuth } from "../auth/AuthContext";
+
 
 export default function MeinePflanzen() {
   const { accessToken } = useAuth();
@@ -18,6 +20,7 @@ export default function MeinePflanzen() {
   const [newPlantName, setNewPlantName] = useState("");
   const [newTodos, setNewTodos] = useState({});
   const [error, setError] = useState(null);
+  const [newPlantImage, setNewPlantImage] = useState(null);
 
   const authHeaders = {
     Authorization: `Bearer ${accessToken}`,
@@ -52,11 +55,20 @@ export default function MeinePflanzen() {
 
   const handleAddPlant = async () => {
     if (!newPlantName.trim()) return;
+
     try {
+      const formData = new FormData();
+      formData.append("name", newPlantName);
+      if (newPlantImage) {
+        formData.append("image", newPlantImage); // "image" = Feldname fürs Backend
+      }
+
       const res = await fetch("/api/plants", {
         method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify({ name: newPlantName }),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: formData,
       });
 
       if (!res.ok) {
@@ -65,6 +77,7 @@ export default function MeinePflanzen() {
       }
 
       setNewPlantName("");
+      setNewPlantImage(null);
       await loadPlants();
     } catch (err) {
       console.error(err);
@@ -173,10 +186,22 @@ export default function MeinePflanzen() {
           onChange={(e) => setNewPlantName(e.target.value)}
           size="small"
         />
+
+        <Button variant="outlined" component="label">
+          Bild wählen
+          <input
+            type="file"
+            hidden
+            accept="image/*"
+            onChange={(e) => setNewPlantImage(e.target.files?.[0] ?? null)}
+          />
+        </Button>
+
         <Button variant="contained" onClick={handleAddPlant}>
           Hinzufügen
         </Button>
       </Stack>
+
 
       {plants.map((plant) => (
         <Card key={plant._id}>
@@ -191,6 +216,17 @@ export default function MeinePflanzen() {
                 Löschen
               </Button>
             </Stack>
+
+            {/*Bild, falls vorhanden */}
+            {plant.imageUrl && (
+              <Box sx={{ mt: 2 }}>
+                <img
+                  src={plant.imageUrl}
+                  alt={plant.name}
+                  style={{ maxWidth: "100%", borderRadius: 8 }}
+                />
+              </Box>
+            )}
 
             <Stack spacing={1} sx={{ mt: 2 }}>
               {(plant.todos || []).map((todo, index) => (

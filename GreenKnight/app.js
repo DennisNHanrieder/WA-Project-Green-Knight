@@ -6,20 +6,50 @@ import { fileURLToPath } from "url";
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import multer from "multer";
+import fs from "fs";
 
 const app = express();
 const port = 3000;
 
+// ---------- __dirname ----------
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ---------- Upload-Verzeichnis ----------
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Multer-Storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const safeName = file.originalname.replace(/\s+/g, "_");
+    cb(null, uniqueSuffix + "-" + safeName);
+  },
+});
+
+const upload = multer({ storage }); // <-- JETZT ist upload definiert
+
 // ---------- Middleware ----------
 
-// Logging Middleware
+// Logging
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
   next();
 });
 
-// JSON Parser Middleware
+// JSON Parser
 app.use(express.json());
+
+// Static Verzeichnisse
+app.use("/uploads", express.static(uploadDir));  // Bild-Dateien erreichbar machen
+app.use(express.static(path.join(__dirname, "dist"))); // React Build
 
 // ---------- Auth Helper & Middleware ----------
 
@@ -37,72 +67,58 @@ function generateAccessToken(user) {
 
 function generateRefreshToken(user) {
   return jwt.sign(
-    {
-      sub: user._id.toString(),
-    },
+    { sub: user._id.toString() },
     process.env.JWT_REFRESH_SECRET,
     { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d" }
   );
 }
 
-// prüft Access-Token in Authorization-Header
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
-  if (!authHeader) {
+  if (!authHeader)
     return res.status(401).json({ error: "Keine Authorization vorhanden" });
-  }
 
   const [type, token] = authHeader.split(" ");
-  if (type !== "Bearer" || !token) {
+  if (type !== "Bearer" || !token)
     return res.status(401).json({ error: "Ungültiger Authorization-Header" });
-  }
 
   jwt.verify(token, process.env.JWT_ACCESS_SECRET, (err, payload) => {
-    if (err) {
-      console.error("JWT Fehler:", err.message);
-      return res.status(401).json({ error: "Token ungültig oder abgelaufen" });
-    }
+    if (err) return res.status(401).json({ error: "Token ungültig oder abgelaufen" });
 
     req.user = {
       id: payload.sub,
       username: payload.username,
       roles: payload.roles || [],
     };
+
     next();
   });
 }
 
-// prüft Rollen (z.B. "admin")
 function authorizeRoles(...allowedRoles) {
   return (req, res, next) => {
     const userRoles = req.user?.roles || [];
     const ok = userRoles.some((r) => allowedRoles.includes(r));
-    if (!ok) {
-      return res.status(403).json({ error: "Keine Berechtigung" });
-    }
+    if (!ok) return res.status(403).json({ error: "Keine Berechtigung" });
     next();
   };
 }
 
 // ---------- Auth-Routen ----------
 
-// Registrierung (vereinfacht, ohne Mail-Activation)
+// Registrierung
 app.post("/auth/register", async (req, res) => {
   try {
     const db = req.app.get("db");
     const users = db.collection("users");
     const { username, email, password, roles } = req.body;
 
-    if (!username || !password) {
-      return res
-        .status(400)
-        .json({ error: "username und password sind erforderlich" });
-    }
+    if (!username || !password)
+      return res.status(400).json({ error: "username und password sind erforderlich" });
 
     const existing = await users.findOne({ username });
-    if (existing) {
+    if (existing)
       return res.status(409).json({ error: "username bereits vergeben" });
-    }
 
     const passwordHash = await bcrypt.hash(password, 10);
     const user = {
@@ -125,15 +141,7 @@ app.post("/auth/register", async (req, res) => {
   }
 });
 
-/**
- * OAuth2-ähnlicher Token-Endpunkt
- *
- * POST /oauth/token
- * Body:
- *  - grant_type: "password" | "refresh_token"
- *  - bei password: username, password
- *  - bei refresh_token: refresh_token
- */
+// Login / Token
 app.post("/oauth/token", async (req, res) => {
   const { grant_type } = req.body;
 
@@ -144,39 +152,27 @@ app.post("/oauth/token", async (req, res) => {
     if (grant_type === "password") {
       const { username, password } = req.body;
 
-      if (!username || !password) {
-        return res
-          .status(400)
-          .json({ error: "username und password sind erforderlich" });
-      }
+      if (!username || !password)
+        return res.status(400).json({ error: "username und password sind erforderlich" });
 
       const user = await users.findOne({ username });
-      if (!user) {
-        return res.status(400).json({ error: "invalid_credentials" });
-      }
+      if (!user) return res.status(400).json({ error: "invalid_credentials" });
 
       const valid = await bcrypt.compare(password, user.passwordHash);
-      if (!valid) {
-        return res.status(400).json({ error: "invalid_credentials" });
-      }
-
-      const accessToken = generateAccessToken(user);
-      const refreshToken = generateRefreshToken(user);
+      if (!valid) return res.status(400).json({ error: "invalid_credentials" });
 
       return res.json({
         token_type: "Bearer",
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        expires_in: 15 * 60, // 15 Minuten
+        access_token: generateAccessToken(user),
+        refresh_token: generateRefreshToken(user),
+        expires_in: 15 * 60,
       });
     }
 
     if (grant_type === "refresh_token") {
       const { refresh_token } = req.body;
-
-      if (!refresh_token) {
+      if (!refresh_token)
         return res.status(400).json({ error: "refresh_token erforderlich" });
-      }
 
       let payload;
       try {
@@ -186,46 +182,37 @@ app.post("/oauth/token", async (req, res) => {
       }
 
       const user = await users.findOne({ _id: new ObjectId(payload.sub) });
-      if (!user) {
-        return res.status(401).json({ error: "user_not_found" });
-      }
-
-      const accessToken = generateAccessToken(user);
-      const newRefreshToken = generateRefreshToken(user);
+      if (!user) return res.status(401).json({ error: "user_not_found" });
 
       return res.json({
         token_type: "Bearer",
-        access_token: accessToken,
-        refresh_token: newRefreshToken,
+        access_token: generateAccessToken(user),
+        refresh_token: generateRefreshToken(user),
         expires_in: 15 * 60,
       });
     }
 
-    return res.status(400).json({ error: "unsupported_grant_type" });
+    res.status(400).json({ error: "unsupported_grant_type" });
   } catch (err) {
     console.error("Token Fehler:", err);
     res.status(500).json({ error: "Interner Serverfehler" });
   }
 });
 
-// optionaler Logout (Frontend löscht Tokens sowieso selbst)
-app.post("/auth/logout", (req, res) => {
-  res.status(204).send();
-});
+// Logout
+app.post("/auth/logout", (req, res) => res.status(204).send());
 
-// ---------- AB HIER: /api nur für eingeloggte User ----------
-
-// alle /api/*-Routen schützen
+// ---------- Geschützte API-Routen ----------
 app.use("/api", authenticateToken);
-
-// ---------- API-Routen ----------
 
 // Test
 app.get("/api/hello", (req, res) => {
   res.json({ message: `Hello from PlantCare API, ${req.user.username}!` });
 });
 
-// Pflanzen
+// ---------- Plants CRUD ----------
+
+// Alle Pflanzen
 app.get("/api/plants", async (req, res) => {
   try {
     const db = req.app.get("db");
@@ -237,6 +224,7 @@ app.get("/api/plants", async (req, res) => {
   }
 });
 
+// Einzelne Pflanze
 app.get("/api/plants/:id", async (req, res) => {
   try {
     const db = req.app.get("db");
@@ -252,20 +240,19 @@ app.get("/api/plants/:id", async (req, res) => {
   }
 });
 
-// Neue Pflanze anlegen
-app.post("/api/plants", async (req, res) => {
+// Pflanze neu anlegen + BILDUPLOAD
+app.post("/api/plants", upload.single("image"), async (req, res) => {
   try {
     const db = req.app.get("db");
     const { name } = req.body;
 
-    if (!name || name.trim() === "") {
+    if (!name || name.trim() === "")
       return res.status(400).json({ error: "Name darf nicht leer sein" });
-    }
 
-    const newPlant = {
-      name: name.trim(),
-      todos: [],
-    };
+    let imageUrl = null;
+    if (req.file) imageUrl = `/uploads/${req.file.filename}`;
+
+    const newPlant = { name: name.trim(), todos: [], imageUrl };
 
     const result = await db.collection("plants").insertOne(newPlant);
     const inserted = await db
@@ -283,13 +270,12 @@ app.post("/api/plants", async (req, res) => {
 app.delete("/api/plants/:id", async (req, res) => {
   try {
     const db = req.app.get("db");
-    const id = new ObjectId(req.params.id);
+    const result = await db
+      .collection("plants")
+      .deleteOne({ _id: new ObjectId(req.params.id) });
 
-    const result = await db.collection("plants").deleteOne({ _id: id });
-
-    if (result.deletedCount === 0) {
+    if (result.deletedCount === 0)
       return res.status(404).send("Pflanze nicht gefunden");
-    }
 
     res.status(204).send();
   } catch (err) {
@@ -298,7 +284,7 @@ app.delete("/api/plants/:id", async (req, res) => {
   }
 });
 
-// ToDos hinzufügen
+// ToDo hinzufügen
 app.post("/api/plants/:id/todos", async (req, res) => {
   try {
     const db = req.app.get("db");
@@ -321,7 +307,7 @@ app.post("/api/plants/:id/todos", async (req, res) => {
   }
 });
 
-// To-Do als erledigt / unerledigt markieren
+// ToDo done status ändern
 app.put("/api/plants/:plantId/todos/:todoIndex", async (req, res) => {
   try {
     const db = req.app.get("db");
@@ -332,9 +318,8 @@ app.put("/api/plants/:plantId/todos/:todoIndex", async (req, res) => {
     const plant = await db.collection("plants").findOne({ _id: id });
     if (!plant) return res.status(404).send("Pflanze nicht gefunden");
 
-    if (!Array.isArray(plant.todos) || todoIndex >= plant.todos.length) {
+    if (!Array.isArray(plant.todos) || todoIndex >= plant.todos.length)
       return res.status(400).send("Ungültiger To-Do-Index");
-    }
 
     plant.todos[todoIndex].done = done;
 
@@ -350,7 +335,7 @@ app.put("/api/plants/:plantId/todos/:todoIndex", async (req, res) => {
   }
 });
 
-// To-Do löschen
+// ToDo löschen
 app.delete("/api/plants/:plantId/todos/:todoIndex", async (req, res) => {
   try {
     const db = req.app.get("db");
@@ -360,9 +345,8 @@ app.delete("/api/plants/:plantId/todos/:todoIndex", async (req, res) => {
     const plant = await db.collection("plants").findOne({ _id: id });
     if (!plant) return res.status(404).send("Pflanze nicht gefunden");
 
-    if (!Array.isArray(plant.todos) || todoIndex >= plant.todos.length) {
+    if (!Array.isArray(plant.todos) || todoIndex >= plant.todos.length)
       return res.status(400).send("Ungültiger To-Do-Index");
-    }
 
     plant.todos.splice(todoIndex, 1);
 
@@ -378,7 +362,7 @@ app.delete("/api/plants/:plantId/todos/:todoIndex", async (req, res) => {
   }
 });
 
-// Wiki
+// ---------- Wiki-Routen ----------
 app.get("/api/wiki", async (req, res) => {
   try {
     const db = req.app.get("db");
@@ -396,7 +380,8 @@ app.get("/api/wiki/:id", async (req, res) => {
     const entry = await db
       .collection("wiki")
       .findOne({ _id: new ObjectId(req.params.id) });
-  if (!entry) return res.status(404).send("Eintrag nicht gefunden");
+
+    if (!entry) return res.status(404).send("Eintrag nicht gefunden");
     res.json(entry);
   } catch (err) {
     console.error(err);
@@ -404,7 +389,6 @@ app.get("/api/wiki/:id", async (req, res) => {
   }
 });
 
-// Wiki-Eintrag erstellen (nur Admin)
 app.post("/api/wiki", authorizeRoles("admin", "user"), async (req, res) => {
   try {
     const db = req.app.get("db");
@@ -419,7 +403,6 @@ app.post("/api/wiki", authorizeRoles("admin", "user"), async (req, res) => {
   }
 });
 
-// Wiki-Eintrag bearbeiten (nur Admin)
 app.put("/api/wiki/:id", authorizeRoles("admin", "user"), async (req, res) => {
   try {
     const db = req.app.get("db");
@@ -442,14 +425,12 @@ app.put("/api/wiki/:id", authorizeRoles("admin", "user"), async (req, res) => {
   }
 });
 
-// Wiki-Eintrag löschen (nur Admin)
 app.delete("/api/wiki/:id", authorizeRoles("admin", "user"), async (req, res) => {
   try {
     const db = req.app.get("db");
     const id = new ObjectId(req.params.id);
 
     const result = await db.collection("wiki").deleteOne({ _id: id });
-
     if (result.deletedCount === 0)
       return res.status(404).send("Eintrag nicht gefunden");
 
@@ -460,28 +441,24 @@ app.delete("/api/wiki/:id", authorizeRoles("admin", "user"), async (req, res) =>
   }
 });
 
-// ---------- React-Frontend ----------
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-app.use(express.static("dist"));
+// ---------- React-Frontend Routing ----------
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 
 // ---------- MongoDB ----------
-
 try {
   const client = new MongoClient(process.env.MONGODB_CONNECTION_STRING);
   await client.connect();
 
-  const db = client.db("plantcare"); // dein Datenbankname
+  const db = client.db("plantcare");
   app.set("db", db);
 
-  // sicherstellen, dass username unique ist
   await db.collection("users").createIndex({ username: 1 }, { unique: true });
 
-  app.listen(port, () => {
-    console.log(`🌿 Server mit DB läuft auf http://localhost:${port}`);
-  });
+  app.listen(port, () =>
+    console.log(`🌿 Server mit DB läuft auf http://localhost:${port}`)
+  );
 } catch (err) {
   console.error("Fehler bei der DB-Verbindung:", err);
 }

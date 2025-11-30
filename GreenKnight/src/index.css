@@ -1,68 +1,82 @@
+/* === Green Knight Theme === */
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --knight-primary: #2E7D32;       /* Ritter-Grün */
+  --knight-primary-dark: #1B5E20;  /* Dunkelgrün Hover */
+  --knight-gold: #C9A227;          /* Gold-Akzent */
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
+/* Hintergrund sauber weiß */
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  background-color: #ffffff;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* ---------- AppBar / Top Navigation (Material UI) ---------- */
+.MuiAppBar-colorPrimary {
+  background-color: var(--knight-primary) !important;
+  border-bottom: 3px solid var(--knight-gold);
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+.MuiAppBar-colorPrimary .MuiTypography-root,
+.MuiAppBar-colorPrimary .MuiButtonBase-root,
+.MuiAppBar-colorPrimary a {
+  color: white !important;
+  font-weight: 600;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.MuiTabs-indicator {
+  background-color: var(--knight-gold) !important;
+}
+
+/* ---------- Buttons ---------- */
+.MuiButton-containedPrimary {
+  background-color: var(--knight-primary) !important;
+  border-color: var(--knight-primary) !important;
+  color: white !important;
+}
+
+.MuiButton-containedPrimary:hover {
+  background-color: var(--knight-primary-dark) !important;
+}
+
+.MuiButton-outlinedPrimary,
+.MuiButton-textPrimary {
+  color: var(--knight-primary) !important;
+  border-color: var(--knight-primary) !important;
+}
+
+.MuiButton-outlinedPrimary:hover {
+  border-color: var(--knight-primary-dark) !important;
+}
+
+/* ---------- Cards / Panels ---------- */
+.MuiPaper-elevation1 {
+  border-left: 4px solid var(--knight-primary);
+  border-radius: 10px;
+}
+
+/* ---------- Inputs ---------- */
+.MuiOutlinedInput-notchedOutline {
+  border-color: var(--knight-primary) !important;
+}
+
+.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--knight-gold) !important;
+  box-shadow: 0 0 4px rgba(201, 162, 39, 0.5);
+}
+
+.MuiInputLabel-root.Mui-focused {
+  color: var(--knight-primary) !important;
+}
+
+/* ---------- Headings ---------- */
+h1, h2, h3 {
+  color: var(--knight-primary);
+  font-weight: 700;
+  font-family: "Merriweather", serif;
+}
+
+/* Checkbox Farbe */
+.MuiCheckbox-colorPrimary.Mui-checked {
+  color: var(--knight-primary) !important;
 }

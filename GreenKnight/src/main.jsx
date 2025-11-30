@@ -14,6 +14,7 @@ import ProtectedRoute from './auth/ProtectedRoute';
 import { AuthProvider } from './auth/AuthContext';
 
 import './i18n/i18n';
+import './index.css';
 
 // ---------- Router-Konfiguration ----------
 const router = createBrowserRouter([

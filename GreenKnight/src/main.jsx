@@ -1,39 +1,59 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
-import Layout from "./components/Layout.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
-import MeinePflanzen from "./pages/MeinePflanzen.jsx";
-import Wiki from "./pages/Wiki.jsx";
-import "./i18n/i18n.js";
+// src/main.jsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { ThemeProvider, CssBaseline, createTheme } from '@mui/material';
 
-const theme = createTheme({
-  palette: {
-    primary: { main: "#388E3C" },
-    secondary: { main: "#81C784" },
-  },
-  typography: { fontFamily: "Roboto, sans-serif" },
-});
+import AppLayout from './components/Layout';
+import Dashboard from './pages/Dashboard';
+import MeinePflanzen from './pages/MeinePflanzen';
+import Wiki from './pages/Wiki';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import ProtectedRoute from './auth/ProtectedRoute';
+import { AuthProvider } from './auth/AuthContext';
 
+import './i18n/i18n';
+import './index.css';
+
+// ---------- Router-Konfiguration ----------
 const router = createBrowserRouter([
   {
-    path: "/",
-    element: <Layout />,
-    errorElement: <h2>404 – Seite nicht gefunden</h2>,
+    path: '/',
+    element: <AppLayout />,
     children: [
-      { index: true, element: <Dashboard /> },
-      { path: "meine-pflanzen", element: <MeinePflanzen /> },
-      { path: "wiki", element: <Wiki /> },
+      // öffentliche Routen
+      { path: 'login', element: <Login /> },
+      { path: 'register', element: <Register /> },
+      {
+        path: 'unauthorized',
+        element: <div>Keine Berechtigung</div>,
+      },
+
+      // geschützte Routen
+      {
+        element: <ProtectedRoute />,
+        children: [
+          { index: true, element: <Dashboard /> },
+          { path: 'meine-pflanzen', element: <MeinePflanzen /> },
+          { path: 'wiki', element: <Wiki /> },
+        ],
+      },
     ],
   },
 ]);
 
-createRoot(document.getElementById("root")).render(
-  <StrictMode>
+// sehr simples MUI-Theme
+const theme = createTheme();
+
+// ---------- Render ----------
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
     </ThemeProvider>
-  </StrictMode>
+  </React.StrictMode>
 );

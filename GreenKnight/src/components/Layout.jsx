@@ -1,63 +1,72 @@
-import { Outlet, Link, useLocation } from "react-router-dom";
-import { AppBar, Toolbar, Typography, Tabs, Tab, Box, Button } from "@mui/material";
-import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
+// src/components/Layout.jsx
+import React from 'react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { AppBar, Toolbar, Typography, Button, Tabs, Tab } from '@mui/material';
+import { useAuth } from '../auth/AuthContext';
 
 export default function Layout() {
+  const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
-  const { t, i18n } = useTranslation();
-  const [value, setValue] = useState(0);
 
-  useEffect(() => {
-    if (location.pathname === "/") setValue(0);
-    else if (location.pathname === "/meine-pflanzen") setValue(1);
-    else if (location.pathname === "/wiki") setValue(2);
-  }, [location.pathname]);
-
-  const toggleLanguage = () => {
-    i18n.changeLanguage(i18n.language === "de" ? "en" : "de");
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
+
+  const currentTab =
+    location.pathname === '/'
+      ? '/'
+      : location.pathname.startsWith('/meine-pflanzen')
+      ? '/meine-pflanzen'
+      : location.pathname.startsWith('/wiki')
+      ? '/wiki'
+      : false;
 
   return (
     <>
       <AppBar position="static">
-        <Toolbar sx={{ position: "relative", justifyContent: "center" }}>
-          <Typography
-            variant="h6"
-            sx={{
-              position: "absolute",
-              left: 16,
-              top: "50%",
-              transform: "translateY(-50%)",
-            }}
-          >
-            {t("app.title")}
+        <Toolbar>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            Green Knight
           </Typography>
 
-          <Tabs value={value} textColor="inherit" indicatorColor="secondary" centered>
-            <Tab label={t("app.dashboard")} component={Link} to="/" />
-            <Tab label={t("app.myPlants")} component={Link} to="/meine-pflanzen" />
-            <Tab label={t("app.wiki")} component={Link} to="/wiki" />
-          </Tabs>
-
-          <Button
-            color="inherit"
-            sx={{
-              position: "absolute",
-              right: 16,
-              top: "50%",
-              transform: "translateY(-50%)",
-            }}
-            onClick={toggleLanguage}
-          >
-            {i18n.language === "de" ? "EN" : "DE"}
-          </Button>
+          {isAuthenticated ? (
+            <>
+              <Typography variant="body2" sx={{ mr: 2 }}>
+                Eingeloggt als {user?.username}
+              </Typography>
+              <Button color="inherit" onClick={handleLogout}>
+                Logout
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button color="inherit" onClick={() => navigate('/login')}>
+                Login
+              </Button>
+              <Button color="inherit" onClick={() => navigate('/register')}>
+                Registrieren
+              </Button>
+            </>
+          )}
         </Toolbar>
       </AppBar>
 
-      <Box sx={{ p: 3 }}>
-        <Outlet />
-      </Box>
+      {isAuthenticated && (
+        <Tabs
+          value={currentTab}
+          onChange={(_, value) => navigate(value)}
+          indicatorColor="secondary"
+          textColor="inherit"
+        >
+          <Tab label="Dashboard" value="/" />
+          <Tab label="Meine Pflanzen" value="/meine-pflanzen" />
+          <Tab label="Wiki" value="/wiki" />
+        </Tabs>
+      )}
+
+      <Outlet />
     </>
   );
 }

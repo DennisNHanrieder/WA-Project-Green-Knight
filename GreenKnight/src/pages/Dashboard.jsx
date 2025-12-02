@@ -1,3 +1,4 @@
+// src/pages/Dashboard.jsx
 import { useEffect, useState } from "react";
 import {
   Typography,
@@ -8,71 +9,84 @@ import {
   FormControlLabel,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../auth/AuthContext";
 
 export default function Dashboard() {
   const { t } = useTranslation();
+  const { accessToken } = useAuth();
   const [plants, setPlants] = useState([]);
+  const [error, setError] = useState(null);
 
   // Daten abrufen
-  const loadData = () => {
-    fetch("/api/plants")
-      .then((res) => res.json())
-      .then((data) => setPlants(data))
-      .catch((err) => console.error("Fehler beim Laden:", err));
-  };
-
   useEffect(() => {
+    if (!accessToken) return;
+
+    const loadData = async () => {
+      try {
+        const res = await fetch("/api/plants", {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || `Fehler ${res.status}`);
+        }
+
+        const data = await res.json();
+        if (!Array.isArray(data)) {
+          throw new Error("Unerwartetes Antwortformat");
+        }
+        setPlants(data);
+        setError(null);
+      } catch (err) {
+        console.error(err);
+        setError(err.message);
+      }
+    };
+
     loadData();
-  }, []);
+  }, [accessToken]);
 
-  // Checkbox ändern
-  const handleToggle = (plantId, todoIndex, newValue) => {
-    fetch(`/api/plants/${plantId}/todos/${todoIndex}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ done: newValue }),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Update fehlgeschlagen");
-        loadData(); // neu laden, um UI zu aktualisieren
-      })
-      .catch((err) => console.error(err));
-  };
-
-  // Alle Todos zusammensetzen
-  const allTodos = plants.flatMap((plant) =>
-    plant.todos.map((todo, index) => ({
+  // Todos aller Pflanzen flach zusammenbauen
+  const todos = (Array.isArray(plants) ? plants : []).flatMap((plant) =>
+    (plant.todos || []).map((todo) => ({
       ...todo,
       plantName: plant.name,
       plantId: plant._id,
-      index,
     }))
   );
 
   return (
-    <Stack spacing={2}>
-      <Typography variant="h5">{t("dashboard.title")}</Typography>
-      <Typography variant="body1">{t("dashboard.subtitle")}</Typography>
-
-      <Typography variant="h6" sx={{ mt: 2 }}>
-        🌱 {t("dashboard.todosTitle", { defaultValue: "To-Dos" })}
+    <Stack spacing={2} sx={{ p: 2 }}>
+      <Typography variant="h4" gutterBottom>
+        {t("dashboard.title", "Dashboard")}
       </Typography>
 
-      {allTodos.map((todo) => (
-        <Card key={`${todo.plantId}-${todo.index}`} variant="outlined">
+      {error && (
+        <Typography color="error" variant="body2">
+          {error}
+        </Typography>
+      )}
+
+      {todos.length === 0 && !error && (
+        <Typography variant="body1">
+          {t("dashboard.noTodos", "Keine To-Dos vorhanden.")}
+        </Typography>
+      )}
+
+      {todos.map((todo, idx) => (
+        <Card key={`${todo.plantId}-${idx}`}>
           <CardContent>
             <FormControlLabel
-              control={
-                <Checkbox
-                  checked={todo.done}
-                  onChange={(e) =>
-                    handleToggle(todo.plantId, todo.index, e.target.checked)
-                  }
-                />
-              }
+              control={<Checkbox checked={!!todo.done} disabled />}
               label={
                 <Typography variant="body1">
-                  {todo.task} <Typography variant="body2">{todo.plantName}</Typography>
+                  {todo.task}{" "}
+                  <Typography component="span" variant="body2">
+                    ({todo.plantName})
+                  </Typography>
                 </Typography>
               }
             />

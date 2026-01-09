@@ -447,18 +447,29 @@ app.use((req, res) => {
 });
 
 // ---------- MongoDB ----------
-try {
-  const client = new MongoClient(process.env.MONGODB_CONNECTION_STRING);
-  await client.connect();
+export default app;
 
-  const db = client.db("plantcare");
-  app.set("db", db);
+export async function startServer() {
+  try {
+    const client = new MongoClient(process.env.MONGODB_CONNECTION_STRING);
+    await client.connect();
 
-  await db.collection("users").createIndex({ username: 1 }, { unique: true });
+    const db = client.db("plantcare");
+    app.set("db", db);
 
-  app.listen(port, () =>
-    console.log(`🌿 Server mit DB läuft auf http://localhost:${port}`)
-  );
-} catch (err) {
-  console.error("Fehler bei der DB-Verbindung:", err);
+    await db.collection("users").createIndex({ username: 1 }, { unique: true });
+
+    app.listen(port, () =>
+      console.log(` Server mit DB läuft auf http://localhost:${port}`)
+    );
+  } catch (err) {
+    console.error("Fehler bei der DB-Verbindung:", err);
+  }
 }
+
+// Nur starten, wenn app.js direkt ausgeführt wird (nicht beim Import in Tests)
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === __filename;
+if (process.env.NODE_ENV !== "test" && isMain) {
+  startServer();
+}
+

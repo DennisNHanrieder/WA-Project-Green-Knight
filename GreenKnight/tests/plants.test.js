@@ -43,7 +43,7 @@ test("GET /api/plants -> 200 returns plants array (authorized)", async () => {
 
   app.set("db", makeMockDb(samplePlants));
 
-  const token = makeAccessToken({ username: "alice", roles: ["user"] });
+  const token = makeAccessToken({ username: "Tom Bombadil", roles: ["user"] });
 
   const res = await request(app)
     .get("/api/plants")

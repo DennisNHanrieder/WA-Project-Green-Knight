@@ -28,12 +28,16 @@ export default function MeinePflanzen() {
   const [newPlantImage, setNewPlantImage] = useState(null);
   const [description, setDescription] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+
 
   const resetAddForm = () => {
     setNewPlantName("");
     setDescription("");
     setNewPlantImage(null);
+    setImagePreviewUrl(null);
   };
+
 
   const authHeaders = {
     Authorization: `Bearer ${accessToken}`,
@@ -92,9 +96,12 @@ export default function MeinePflanzen() {
       }
 
       // Reset Formular
+      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+
       setNewPlantName("");
       setDescription("");
       setNewPlantImage(null);
+      setImagePreviewUrl(null);
 
       await loadPlants();
       setError(null);
@@ -213,7 +220,7 @@ export default function MeinePflanzen() {
         </Button>
       </Stack>
 
-      <Dialog  open={addOpen} onClose={() => { resetAddForm(); setAddOpen(false);}} fullWidth maxWidth="sm">
+      <Dialog open={addOpen} onClose={() => { resetAddForm(); setAddOpen(false); }} fullWidth maxWidth="sm">
         <DialogTitle>Neue Pflanze hinzufügen</DialogTitle>
 
         <DialogContent sx={{ pt: 1 }}>
@@ -241,7 +248,16 @@ export default function MeinePflanzen() {
                 type="file"
                 hidden
                 accept="image/*"
-                onChange={(e) => setNewPlantImage(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setNewPlantImage(file);
+
+                  // reomve old Preview-URL
+                  if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+
+                  // add new Preview-URL
+                  setImagePreviewUrl(file ? URL.createObjectURL(file) : null);
+                }}
               />
             </Button>
 
@@ -250,11 +266,36 @@ export default function MeinePflanzen() {
                 Ausgewählt: {newPlantImage.name}
               </Typography>
             )}
+
+            {imagePreviewUrl && (
+              <Box sx={{ mt: 1 }}>
+                <img
+                  src={imagePreviewUrl}
+                  alt="Vorschau"
+                  style={{
+                    width: "100%",
+                    maxHeight: 220,
+                    objectFit: "cover",
+                    borderRadius: 8,
+                  }}
+                />
+              </Box>
+            )}
+
           </Stack>
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={() => setAddOpen(false)}>Abbrechen</Button>
+          <Button
+            onClick={() => {
+              if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+              setImagePreviewUrl(null);
+              setAddOpen(false);
+            }}
+          >
+            Abbrechen
+          </Button>
+          
           <Button
             variant="contained"
             onClick={async () => {
@@ -270,88 +311,88 @@ export default function MeinePflanzen() {
         </DialogActions>
       </Dialog>
 
-        {plants.map((plant) => (
-          <Card key={plant._id}>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography variant="h6">{plant.name}</Typography>
-                {plant.description && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    {plant.description}
-                  </Typography>
-                )}
-                <Button
-                  variant="outlined"
-                  color="error"
-                  onClick={() => handleDeletePlant(plant._id)}
-                >
-                  Löschen
-                </Button>
-              </Stack>
-
-              {/*Bild, falls vorhanden */}
-              {plant.imageUrl && (
-                <Box sx={{ mt: 2 }}>
-                  <img
-                    src={plant.imageUrl}
-                    alt={plant.name}
-                    style={{ maxWidth: "100%", borderRadius: 8 }}
-                  />
-                </Box>
+      {plants.map((plant) => (
+        <Card key={plant._id}>
+          <CardContent>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="h6">{plant.name}</Typography>
+              {plant.description && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {plant.description}
+                </Typography>
               )}
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => handleDeletePlant(plant._id)}
+              >
+                Löschen
+              </Button>
+            </Stack>
 
-              <Stack spacing={1} sx={{ mt: 2 }}>
-                {(plant.todos || []).map((todo, index) => (
-                  <Stack
-                    key={index}
-                    direction="row"
-                    alignItems="center"
-                    justifyContent="space-between"
-                  >
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={!!todo.done}
-                          onChange={(e) =>
-                            handleToggleTodo(plant._id, index, e.target.checked)
-                          }
-                        />
-                      }
-                      label={todo.task}
-                    />
-                    <Button
-                      size="small"
-                      color="error"
-                      onClick={() => handleDeleteTodo(plant._id, index)}
-                    >
-                      X
-                    </Button>
-                  </Stack>
-                ))}
+            {/*Bild, falls vorhanden */}
+            {plant.imageUrl && (
+              <Box sx={{ mt: 2 }}>
+                <img
+                  src={plant.imageUrl}
+                  alt={plant.name}
+                  style={{ maxWidth: "100%", borderRadius: 8 }}
+                />
+              </Box>
+            )}
 
-                <Stack direction="row" spacing={1}>
-                  <TextField
-                    size="small"
-                    label="Neues To-Do"
-                    value={newTodos[plant._id] || ""}
-                    onChange={(e) =>
-                      setNewTodos((prev) => ({
-                        ...prev,
-                        [plant._id]: e.target.value,
-                      }))
+            <Stack spacing={1} sx={{ mt: 2 }}>
+              {(plant.todos || []).map((todo, index) => (
+                <Stack
+                  key={index}
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                >
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={!!todo.done}
+                        onChange={(e) =>
+                          handleToggleTodo(plant._id, index, e.target.checked)
+                        }
+                      />
                     }
+                    label={todo.task}
                   />
                   <Button
-                    variant="contained"
-                    onClick={() => handleAddTodo(plant._id)}
+                    size="small"
+                    color="error"
+                    onClick={() => handleDeleteTodo(plant._id, index)}
                   >
-                    ➕
+                    X
                   </Button>
                 </Stack>
+              ))}
+
+              <Stack direction="row" spacing={1}>
+                <TextField
+                  size="small"
+                  label="Neues To-Do"
+                  value={newTodos[plant._id] || ""}
+                  onChange={(e) =>
+                    setNewTodos((prev) => ({
+                      ...prev,
+                      [plant._id]: e.target.value,
+                    }))
+                  }
+                />
+                <Button
+                  variant="contained"
+                  onClick={() => handleAddTodo(plant._id)}
+                >
+                  ➕
+                </Button>
               </Stack>
-            </CardContent>
-          </Card>
-        ))}
+            </Stack>
+          </CardContent>
+        </Card>
+      ))}
     </Stack>
   );
 }

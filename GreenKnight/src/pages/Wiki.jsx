@@ -7,7 +7,12 @@ import {
   CardContent,
   TextField,
   Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
+
 import { useAuth } from "../auth/AuthContext";
 
 export default function Wiki() {
@@ -17,6 +22,12 @@ export default function Wiki() {
   const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState({ title: "", content: "" });
   const [error, setError] = useState(null);
+  const [addOpen, setAddOpen] = useState(false);
+
+  const resetAddForm = () => {
+    setNewEntry({ title: "", content: "" });
+  };
+
 
   const authHeaders = {
     Authorization: `Bearer ${accessToken}`,
@@ -50,7 +61,8 @@ export default function Wiki() {
   }, [accessToken]);
 
   const handleCreate = async () => {
-    if (!newEntry.title.trim() || !newEntry.content.trim()) return;
+    if (!newEntry.title.trim() || !newEntry.content.trim()) return false;
+
     try {
       const res = await fetch("/api/wiki", {
         method: "POST",
@@ -63,13 +75,18 @@ export default function Wiki() {
         throw new Error(data.error || `Fehler ${res.status}`);
       }
 
-      setNewEntry({ title: "", content: "" });
+      resetAddForm();
       await loadEntries();
+      setError(null);
+
+      return true; // sucess
     } catch (err) {
       console.error(err);
       setError(err.message);
+      return false; // error
     }
   };
+
 
   const startEdit = (entry) => {
     setEditing(entry._id);
@@ -129,32 +146,68 @@ export default function Wiki() {
         </Typography>
       )}
 
-      <Card>
-        <CardContent>
-          <Typography variant="h6">Neuer Eintrag</Typography>
-          <Stack spacing={1} sx={{ mt: 1 }}>
+      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+        <Button
+          variant="contained"
+          onClick={() => {
+            resetAddForm();
+            setAddOpen(true);
+          }}
+        >
+          Hinzufügen
+        </Button>
+      </Stack>
+
+      <Dialog open={addOpen} onClose={() => setAddOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Neuen Wiki-Eintrag hinzufügen</DialogTitle>
+
+        <DialogContent sx={{ pt: 1 }}>
+          <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
               label="Titel"
               value={newEntry.title}
               onChange={(e) =>
                 setNewEntry((prev) => ({ ...prev, title: e.target.value }))
               }
+              autoFocus
+              fullWidth
             />
+
             <TextField
               label="Inhalt"
               multiline
-              minRows={3}
+              minRows={6}
               value={newEntry.content}
               onChange={(e) =>
                 setNewEntry((prev) => ({ ...prev, content: e.target.value }))
               }
+              fullWidth
             />
-            <Button variant="contained" onClick={handleCreate}>
-              Speichern
-            </Button>
           </Stack>
-        </CardContent>
-      </Card>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={() => {
+              resetAddForm();
+              setAddOpen(false);
+            }}
+          >
+            Abbrechen
+          </Button>
+
+          <Button
+            variant="contained"
+            disabled={!newEntry.title.trim() || !newEntry.content.trim()}
+            onClick={async () => {
+              const success = await handleCreate();
+              if (success) setAddOpen(false);
+            }}
+          >
+            Speichern
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {entries.map((entry) => (
         <Card key={entry._id}>

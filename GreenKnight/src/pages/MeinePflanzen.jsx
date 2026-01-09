@@ -21,6 +21,7 @@ export default function MeinePflanzen() {
   const [newTodos, setNewTodos] = useState({});
   const [error, setError] = useState(null);
   const [newPlantImage, setNewPlantImage] = useState(null);
+  const [description, setDescription] = useState("");
 
   const authHeaders = {
     Authorization: `Bearer ${accessToken}`,
@@ -59,6 +60,8 @@ export default function MeinePflanzen() {
     try {
       const formData = new FormData();
       formData.append("name", newPlantName);
+      formData.append("description", description);
+
       if (newPlantImage) {
         formData.append("image", newPlantImage); // "image" = Feldname fürs Backend
       }
@@ -78,6 +81,8 @@ export default function MeinePflanzen() {
 
       setNewPlantName("");
       setNewPlantImage(null);
+      setDescription("");
+
       await loadPlants();
     } catch (err) {
       console.error(err);
@@ -187,6 +192,16 @@ export default function MeinePflanzen() {
           size="small"
         />
 
+        <TextField
+          label="Beschreibung"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          size="small"
+          multiline
+          rows={2}
+          sx={{ minWidth: 260 }}
+        />
+
         <Button variant="outlined" component="label">
           Bild wählen
           <input
@@ -208,6 +223,11 @@ export default function MeinePflanzen() {
           <CardContent>
             <Stack direction="row" justifyContent="space-between" alignItems="center">
               <Typography variant="h6">{plant.name}</Typography>
+              {plant.description && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {plant.description}
+                </Typography>
+              )}
               <Button
                 variant="outlined"
                 color="error"

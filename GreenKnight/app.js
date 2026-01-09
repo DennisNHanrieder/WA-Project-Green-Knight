@@ -244,15 +244,19 @@ app.get("/api/plants/:id", async (req, res) => {
 app.post("/api/plants", upload.single("image"), async (req, res) => {
   try {
     const db = req.app.get("db");
-    const { name } = req.body;
+    const { name, description } = req.body;
 
     if (!name || name.trim() === "")
       return res.status(400).json({ error: "Name darf nicht leer sein" });
 
+    if (description && description.length > 1000) {
+      return res.status(400).json({ error: "description zu lang" });
+    }
+
     let imageUrl = null;
     if (req.file) imageUrl = `/uploads/${req.file.filename}`;
 
-    const newPlant = { name: name.trim(), todos: [], imageUrl };
+    const newPlant = { name: name.trim(), description: description || "", todos: [], imageUrl };
 
     const result = await db.collection("plants").insertOne(newPlant);
     const inserted = await db

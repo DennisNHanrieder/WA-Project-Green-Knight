@@ -37,8 +37,8 @@ function makeAccessToken({
 
 test("GET /api/plants -> 200 returns plants array (authorized)", async () => {
   const samplePlants = [
-    { _id: "p1", name: "Monstera" },
-    { _id: "p2", name: "Aloe" },
+    { _id: "p1", name: "Monstera", description: "Pflanze"},
+    { _id: "p2", name: "Aloe", description: "Pflanze"},
   ];
 
   app.set("db", makeMockDb(samplePlants));

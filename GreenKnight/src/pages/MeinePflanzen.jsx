@@ -9,8 +9,13 @@ import {
   FormControlLabel,
   TextField,
   Button,
-  Box
+  Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from "@mui/material";
+
 import { useAuth } from "../auth/AuthContext";
 
 
@@ -21,6 +26,18 @@ export default function MeinePflanzen() {
   const [newTodos, setNewTodos] = useState({});
   const [error, setError] = useState(null);
   const [newPlantImage, setNewPlantImage] = useState(null);
+  const [description, setDescription] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+
+
+  const resetAddForm = () => {
+    setNewPlantName("");
+    setDescription("");
+    setNewPlantImage(null);
+    setImagePreviewUrl(null);
+  };
+
 
   const authHeaders = {
     Authorization: `Bearer ${accessToken}`,
@@ -59,6 +76,8 @@ export default function MeinePflanzen() {
     try {
       const formData = new FormData();
       formData.append("name", newPlantName);
+      formData.append("description", description);
+
       if (newPlantImage) {
         formData.append("image", newPlantImage); // "image" = Feldname fürs Backend
       }
@@ -76,12 +95,22 @@ export default function MeinePflanzen() {
         throw new Error(data.error || `Fehler ${res.status}`);
       }
 
+      // Reset Formular
+      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+
       setNewPlantName("");
+      setDescription("");
       setNewPlantImage(null);
+      setImagePreviewUrl(null);
+
       await loadPlants();
+      setError(null);
+
+      return true; // worked
     } catch (err) {
       console.error(err);
       setError(err.message);
+      return false; // error
     }
   };
 
@@ -180,34 +209,118 @@ export default function MeinePflanzen() {
       )}
 
       <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-        <TextField
-          label="Neue Pflanze"
-          value={newPlantName}
-          onChange={(e) => setNewPlantName(e.target.value)}
-          size="small"
-        />
-
-        <Button variant="outlined" component="label">
-          Bild wählen
-          <input
-            type="file"
-            hidden
-            accept="image/*"
-            onChange={(e) => setNewPlantImage(e.target.files?.[0] ?? null)}
-          />
-        </Button>
-
-        <Button variant="contained" onClick={handleAddPlant}>
+        <Button
+          variant="contained"
+          onClick={() => {
+            resetAddForm();
+            setAddOpen(true);
+          }}
+        >
           Hinzufügen
         </Button>
       </Stack>
 
+      <Dialog open={addOpen} onClose={() => { resetAddForm(); setAddOpen(false); }} fullWidth maxWidth="sm">
+        <DialogTitle>Neue Pflanze hinzufügen</DialogTitle>
+
+        <DialogContent sx={{ pt: 1 }}>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Name"
+              value={newPlantName}
+              onChange={(e) => setNewPlantName(e.target.value)}
+              autoFocus
+              fullWidth
+            />
+
+            <TextField
+              label="Beschreibung"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              multiline
+              rows={3}
+              fullWidth
+            />
+
+            <Button variant="outlined" component="label">
+              Bild wählen
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setNewPlantImage(file);
+
+                  // reomve old Preview-URL
+                  if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+
+                  // add new Preview-URL
+                  setImagePreviewUrl(file ? URL.createObjectURL(file) : null);
+                }}
+              />
+            </Button>
+
+            {newPlantImage && (
+              <Typography variant="body2" color="text.secondary">
+                Ausgewählt: {newPlantImage.name}
+              </Typography>
+            )}
+
+            {imagePreviewUrl && (
+              <Box sx={{ mt: 1 }}>
+                <img
+                  src={imagePreviewUrl}
+                  alt="Vorschau"
+                  style={{
+                    width: "100%",
+                    maxHeight: 220,
+                    objectFit: "cover",
+                    borderRadius: 8,
+                  }}
+                />
+              </Box>
+            )}
+
+          </Stack>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={() => {
+              if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+              setImagePreviewUrl(null);
+              setAddOpen(false);
+            }}
+          >
+            Abbrechen
+          </Button>
+          
+          <Button
+            variant="contained"
+            onClick={async () => {
+              const success = await handleAddPlant();
+              if (success) {
+                setAddOpen(false);
+              }
+            }}
+            disabled={!newPlantName.trim()}
+          >
+            Speichern
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {plants.map((plant) => (
         <Card key={plant._id}>
           <CardContent>
             <Stack direction="row" justifyContent="space-between" alignItems="center">
               <Typography variant="h6">{plant.name}</Typography>
+              {plant.description && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {plant.description}
+                </Typography>
+              )}
               <Button
                 variant="outlined"
                 color="error"

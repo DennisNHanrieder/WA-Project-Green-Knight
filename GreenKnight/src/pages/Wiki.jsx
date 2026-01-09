@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Box,
 } from "@mui/material";
 
 import { useAuth } from "../auth/AuthContext";
@@ -23,11 +24,19 @@ export default function Wiki() {
   const [editData, setEditData] = useState({ title: "", content: "" });
   const [error, setError] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [newEntryImage, setNewEntryImage] = useState(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+  const [thumbnail, setThumbnail] = useState(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState(null);
+
 
   const resetAddForm = () => {
     setNewEntry({ title: "", content: "" });
-  };
 
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    setImagePreviewUrl(null);
+    setNewEntryImage(null);
+  };
 
   const authHeaders = {
     Authorization: `Bearer ${accessToken}`,
@@ -61,13 +70,20 @@ export default function Wiki() {
   }, [accessToken]);
 
   const handleCreate = async () => {
-    if (!newEntry.title.trim() || !newEntry.content.trim()) return false;
+    if (!newEntry.title.trim() || !newEntry.content.trim()) return;
 
     try {
+      const formData = new FormData();
+      formData.append("title", newEntry.title);
+      formData.append("content", newEntry.content);
+      if (thumbnail) formData.append("image", thumbnail);
+
       const res = await fetch("/api/wiki", {
         method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify(newEntry),
+        headers: {
+          Authorization: `Bearer ${accessToken}`, // Authorization
+        },
+        body: formData,
       });
 
       if (!res.ok) {
@@ -75,18 +91,17 @@ export default function Wiki() {
         throw new Error(data.error || `Fehler ${res.status}`);
       }
 
-      resetAddForm();
-      await loadEntries();
-      setError(null);
+      setNewEntry({ title: "", content: "" });
+      setThumbnail(null);
+      setThumbnailPreview(null);
+      setOpenDialog(false);
 
-      return true; // sucess
+      await loadEntries();
     } catch (err) {
       console.error(err);
       setError(err.message);
-      return false; // error
     }
   };
-
 
   const startEdit = (entry) => {
     setEditing(entry._id);
@@ -183,6 +198,67 @@ export default function Wiki() {
               }
               fullWidth
             />
+
+            <Button variant="outlined" component="label">
+              Thumbnail
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  setThumbnail(file || null);
+                  setThumbnailPreview(file ? URL.createObjectURL(file) : null);
+                }}
+              />
+            </Button>
+
+            {thumbnailPreview && (
+              <img
+                src={thumbnailPreview}
+                alt="Thumbnail Preview"
+                style={{
+                  marginTop: 12,
+                  maxWidth: "100%",
+                  borderRadius: 8,
+                }}
+              />
+            )}
+
+            {entry.thumbnailUrl && (
+              <img
+                src={entry.thumbnailUrl}
+                alt={entry.title}
+                style={{
+                  width: 120,
+                  height: "auto",
+                  borderRadius: 8,
+                  marginBottom: 8,
+                }}
+              />
+            )}
+
+            {newEntryImage && (
+              <Typography variant="body2" color="text.secondary">
+                Ausgewählt: {newEntryImage.name}
+              </Typography>
+            )}
+
+            {imagePreviewUrl && (
+              <Box sx={{ mt: 1 }}>
+                <img
+                  src={imagePreviewUrl}
+                  alt="Thumbnail Vorschau"
+                  style={{
+                    width: "100%",
+                    maxHeight: 200,
+                    objectFit: "cover",
+                    borderRadius: 8,
+                  }}
+                />
+              </Box>
+            )}
+
           </Stack>
         </DialogContent>
 
@@ -257,6 +333,22 @@ export default function Wiki() {
                 <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
                   {entry.content}
                 </Typography>
+
+                {(entry.thumbnailUrl || entry.imageUrl) && (
+                  <Box sx={{ mt: 1, mb: 1 }}>
+                    <img
+                      src={entry.thumbnailUrl || entry.imageUrl}
+                      alt={entry.title}
+                      style={{
+                        width: 180,
+                        height: 120,
+                        objectFit: "cover",
+                        borderRadius: 8,
+                      }}
+                    />
+                  </Box>
+                )}
+
                 <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                   <Button variant="outlined" onClick={() => startEdit(entry)}>
                     Bearbeiten

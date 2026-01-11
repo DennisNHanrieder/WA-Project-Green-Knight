@@ -12,6 +12,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ProtectedRoute from './auth/ProtectedRoute';
 import { AuthProvider } from './auth/AuthContext';
+import WikiDetail from "./pages/WikiDetail";
 
 import './i18n/i18n';
 import './index.css';
@@ -37,6 +38,7 @@ const router = createBrowserRouter([
           { index: true, element: <Dashboard /> },
           { path: 'meine-pflanzen', element: <MeinePflanzen /> },
           { path: 'wiki', element: <Wiki /> },
+          { path: "/wiki/:id", element: <WikiDetail />},
         ],
       },
     ],

@@ -14,9 +14,12 @@ import {
   Box,
 } from "@mui/material";
 import { useAuth } from "../auth/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function Wiki() {
   const { accessToken } = useAuth();
+
+  const navigate = useNavigate();
 
   const [entries, setEntries] = useState([]);
   const [newEntry, setNewEntry] = useState({ title: "", content: "" });
@@ -290,10 +293,14 @@ export default function Wiki() {
 
       {/* Entries */}
       {entries.map((entry) => (
-        <Card key={entry._id}>
+        <Card
+          key={entry._id}
+          sx={{ cursor: "pointer" }}
+          onClick={() => navigate(`/wiki/${entry._id}`)}
+        >
           <CardContent>
             {editing === entry._id ? (
-              <Stack spacing={1}>
+              <Stack spacing={1} onClick={(e) => e.stopPropagation()}>
                 <TextField
                   label="Titel"
                   value={editData.title}
@@ -316,13 +323,17 @@ export default function Wiki() {
                 <Stack direction="row" spacing={1}>
                   <Button
                     variant="contained"
-                    onClick={() => handleSaveEdit(entry._id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSaveEdit(entry._id);
+                    }}
                   >
                     Speichern
                   </Button>
                   <Button
                     variant="outlined"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setEditing(null);
                       setEditData({ title: "", content: "" });
                     }}
@@ -349,18 +360,28 @@ export default function Wiki() {
                         objectFit: "cover",
                         borderRadius: 8,
                       }}
+                      onClick={(e) => e.stopPropagation()}
                     />
                   </Box>
                 )}
 
                 <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                  <Button variant="outlined" onClick={() => startEdit(entry)}>
+                  <Button
+                    variant="outlined"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startEdit(entry);
+                    }}
+                  >
                     Bearbeiten
                   </Button>
                   <Button
                     variant="outlined"
                     color="error"
-                    onClick={() => handleDelete(entry._id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(entry._id);
+                    }}
                   >
                     ❌ Löschen
                   </Button>
@@ -370,6 +391,7 @@ export default function Wiki() {
           </CardContent>
         </Card>
       ))}
+
     </Stack>
   );
 }

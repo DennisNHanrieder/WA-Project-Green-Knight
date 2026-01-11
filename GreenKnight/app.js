@@ -396,7 +396,7 @@ app.get("/api/wiki/:id", async (req, res) => {
 app.post(
   "/api/wiki",
   authorizeRoles("admin", "user"),
-  upload.single("image"),
+  upload.single("thumbnail"),
   async (req, res) => {
     try {
       const db = req.app.get("db");
@@ -436,7 +436,7 @@ app.post(
 app.put(
   "/api/wiki/:id",
   authorizeRoles("admin", "user"),
-  upload.single("image"),
+  upload.single("thumbnail"),
   async (req, res) => {
     try {
       const db = req.app.get("db");

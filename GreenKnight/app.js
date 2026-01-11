@@ -393,41 +393,82 @@ app.get("/api/wiki/:id", async (req, res) => {
   }
 });
 
-app.post("/api/wiki", authorizeRoles("admin", "user"), async (req, res) => {
-  try {
-    const db = req.app.get("db");
-    const result = await db.collection("wiki").insertOne(req.body);
-    const newEntry = await db
-      .collection("wiki")
-      .findOne({ _id: result.insertedId });
-    res.status(201).json(newEntry);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Fehler beim Erstellen des Eintrags");
+app.post(
+  "/api/wiki",
+  authorizeRoles("admin", "user"),
+  upload.single("thumbnail"),
+  async (req, res) => {
+    try {
+      const db = req.app.get("db");
+      const { title, content } = req.body;
+
+      if (!title || !title.trim() || !content || !content.trim()) {
+        return res
+          .status(400)
+          .json({ error: "title und content sind erforderlich" });
+      }
+
+      let thumbnailUrl = null;
+      if (req.file) thumbnailUrl = `/uploads/${req.file.filename}`;
+
+      const newDoc = {
+        title: title.trim(),
+        content: content.trim(),
+        thumbnailUrl,
+        createdAt: new Date(),
+        createdBy: req.user?.username || null,
+      };
+
+      const result = await db.collection("wiki").insertOne(newDoc);
+      const newEntry = await db
+        .collection("wiki")
+        .findOne({ _id: result.insertedId });
+
+      res.status(201).json(newEntry);
+    } catch (err) {
+      console.error(err);
+      res.status(500).send("Fehler beim Erstellen des Eintrags");
+    }
   }
-});
+);
 
-app.put("/api/wiki/:id", authorizeRoles("admin", "user"), async (req, res) => {
-  try {
-    const db = req.app.get("db");
-    const id = new ObjectId(req.params.id);
-    const { title, content } = req.body;
 
-    const result = await db.collection("wiki").updateOne(
-      { _id: id },
-      { $set: { title, content } }
-    );
+app.put(
+  "/api/wiki/:id",
+  authorizeRoles("admin", "user"),
+  upload.single("thumbnail"),
+  async (req, res) => {
+    try {
+      const db = req.app.get("db");
+      const id = new ObjectId(req.params.id);
 
-    if (result.matchedCount === 0)
-      return res.status(404).send("Eintrag nicht gefunden");
+      const { title, content } = req.body;
 
-    const updated = await db.collection("wiki").findOne({ _id: id });
-    res.json(updated);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Fehler beim Bearbeiten des Eintrags");
+      const update = {};
+      if (title !== undefined) update.title = title;
+      if (content !== undefined) update.content = content;
+
+      if (req.file) {
+        update.thumbnailUrl = `/uploads/${req.file.filename}`;
+      }
+
+      const result = await db.collection("wiki").updateOne(
+        { _id: id },
+        { $set: update }
+      );
+
+      if (result.matchedCount === 0)
+        return res.status(404).send("Eintrag nicht gefunden");
+
+      const updated = await db.collection("wiki").findOne({ _id: id });
+      res.json(updated);
+    } catch (err) {
+      console.error(err);
+      res.status(500).send("Fehler beim Bearbeiten des Eintrags");
+    }
   }
-});
+);
+
 
 app.delete("/api/wiki/:id", authorizeRoles("admin", "user"), async (req, res) => {
   try {

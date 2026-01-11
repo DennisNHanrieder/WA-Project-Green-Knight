@@ -7,24 +7,50 @@ import {
   CardContent,
   TextField,
   Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Box,
 } from "@mui/material";
 import { useAuth } from "../auth/AuthContext";
 
 export default function Wiki() {
   const { accessToken } = useAuth();
+
   const [entries, setEntries] = useState([]);
   const [newEntry, setNewEntry] = useState({ title: "", content: "" });
+
   const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState({ title: "", content: "" });
+
   const [error, setError] = useState(null);
 
-  const authHeaders = {
+  // Add-Dialog
+  const [addOpen, setAddOpen] = useState(false);
+
+  // Thumbnail Upload (Add-Dialog)
+  const [thumbnail, setThumbnail] = useState(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState(null);
+
+  const authHeadersJson = {
     Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
   };
 
+  const resetAddForm = () => {
+    setNewEntry({ title: "", content: "" });
+
+    if (thumbnailPreview) {
+      URL.revokeObjectURL(thumbnailPreview);
+    }
+    setThumbnail(null);
+    setThumbnailPreview(null);
+  };
+
   const loadEntries = async () => {
     if (!accessToken) return;
+
     try {
       const res = await fetch("/api/wiki", {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -51,11 +77,23 @@ export default function Wiki() {
 
   const handleCreate = async () => {
     if (!newEntry.title.trim() || !newEntry.content.trim()) return;
+
     try {
+      const formData = new FormData();
+      formData.append("title", newEntry.title.trim());
+      formData.append("content", newEntry.content.trim());
+
+      // Backend-Feldname:
+      // Wenn dein Backend upload.single("thumbnail") nutzt -> "thumbnail"
+      // Wenn dein Backend upload.single("image") nutzt -> "image"
+      if (thumbnail) formData.append("thumbnail", thumbnail);
+
       const res = await fetch("/api/wiki", {
         method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify(newEntry),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: formData,
       });
 
       if (!res.ok) {
@@ -63,7 +101,10 @@ export default function Wiki() {
         throw new Error(data.error || `Fehler ${res.status}`);
       }
 
-      setNewEntry({ title: "", content: "" });
+      // UI reset + Dialog schließen
+      resetAddForm();
+      setAddOpen(false);
+
       await loadEntries();
     } catch (err) {
       console.error(err);
@@ -73,15 +114,18 @@ export default function Wiki() {
 
   const startEdit = (entry) => {
     setEditing(entry._id);
-    setEditData({ title: entry.title, content: entry.content });
+    setEditData({ title: entry.title || "", content: entry.content || "" });
   };
 
   const handleSaveEdit = async (id) => {
     try {
       const res = await fetch(`/api/wiki/${id}`, {
         method: "PUT",
-        headers: authHeaders,
-        body: JSON.stringify(editData),
+        headers: authHeadersJson,
+        body: JSON.stringify({
+          title: editData.title,
+          content: editData.content,
+        }),
       });
 
       if (!res.ok) {
@@ -129,33 +173,122 @@ export default function Wiki() {
         </Typography>
       )}
 
-      <Card>
-        <CardContent>
-          <Typography variant="h6">Neuer Eintrag</Typography>
-          <Stack spacing={1} sx={{ mt: 1 }}>
+      {/* Button zum Öffnen des Add-Dialogs */}
+      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+        <Button
+          variant="contained"
+          onClick={() => {
+            resetAddForm();
+            setAddOpen(true);
+          }}
+        >
+          Hinzufügen
+        </Button>
+      </Stack>
+
+      {/* Add Dialog */}
+      <Dialog
+        open={addOpen}
+        onClose={() => {
+          resetAddForm();
+          setAddOpen(false);
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Neuen Wiki-Eintrag hinzufügen</DialogTitle>
+
+        <DialogContent sx={{ pt: 1 }}>
+          <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
               label="Titel"
               value={newEntry.title}
               onChange={(e) =>
                 setNewEntry((prev) => ({ ...prev, title: e.target.value }))
               }
+              autoFocus
+              fullWidth
             />
+
             <TextField
               label="Inhalt"
               multiline
-              minRows={3}
+              minRows={6}
               value={newEntry.content}
               onChange={(e) =>
                 setNewEntry((prev) => ({ ...prev, content: e.target.value }))
               }
+              fullWidth
             />
-            <Button variant="contained" onClick={handleCreate}>
-              Speichern
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
 
+            <Button variant="outlined" component="label">
+              Thumbnail wählen
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) {
+                    if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+                    setThumbnail(null);
+                    setThumbnailPreview(null);
+                    return;
+                  }
+
+                  // alte Preview freigeben, sonst Memory Leak
+                  if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+
+                  setThumbnail(file);
+                  setThumbnailPreview(URL.createObjectURL(file));
+                }}
+              />
+            </Button>
+
+            {thumbnail && (
+              <Typography variant="body2" color="text.secondary">
+                Ausgewählt: {thumbnail.name}
+              </Typography>
+            )}
+
+            {thumbnailPreview && (
+              <Box sx={{ mt: 1 }}>
+                <img
+                  src={thumbnailPreview}
+                  alt="Thumbnail Preview"
+                  style={{
+                    width: "100%",
+                    maxHeight: 220,
+                    objectFit: "cover",
+                    borderRadius: 8,
+                  }}
+                />
+              </Box>
+            )}
+          </Stack>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={() => {
+              resetAddForm();
+              setAddOpen(false);
+            }}
+          >
+            Abbrechen
+          </Button>
+
+          <Button
+            variant="contained"
+            disabled={!newEntry.title.trim() || !newEntry.content.trim()}
+            onClick={handleCreate}
+          >
+            Speichern
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Entries */}
       {entries.map((entry) => (
         <Card key={entry._id}>
           <CardContent>
@@ -204,6 +337,22 @@ export default function Wiki() {
                 <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
                   {entry.content}
                 </Typography>
+
+                {(entry.thumbnailUrl || entry.imageUrl) && (
+                  <Box sx={{ mt: 1, mb: 1 }}>
+                    <img
+                      src={entry.thumbnailUrl || entry.imageUrl}
+                      alt={entry.title}
+                      style={{
+                        width: 180,
+                        height: 120,
+                        objectFit: "cover",
+                        borderRadius: 8,
+                      }}
+                    />
+                  </Box>
+                )}
+
                 <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                   <Button variant="outlined" onClick={() => startEdit(entry)}>
                     Bearbeiten

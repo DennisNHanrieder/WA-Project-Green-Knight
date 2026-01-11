@@ -18,7 +18,6 @@ import { useNavigate } from "react-router-dom";
 
 export default function Wiki() {
   const { accessToken } = useAuth();
-
   const navigate = useNavigate();
 
   const [entries, setEntries] = useState([]);
@@ -39,6 +38,23 @@ export default function Wiki() {
   const authHeadersJson = {
     Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
+  };
+
+  const formatDate = (iso) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const formatCreatedBy = (createdBy) => {
+    if (!createdBy) return "Unbekannt";
+    if (typeof createdBy === "string") return createdBy; // falls nur ID kommt
+    return createdBy.username || createdBy.name || createdBy.email || "Unbekannt";
   };
 
   const resetAddForm = () => {
@@ -104,7 +120,6 @@ export default function Wiki() {
         throw new Error(data.error || `Fehler ${res.status}`);
       }
 
-      // UI reset + Dialog schließen
       resetAddForm();
       setAddOpen(false);
 
@@ -345,6 +360,18 @@ export default function Wiki() {
             ) : (
               <>
                 <Typography variant="h6">{entry.title}</Typography>
+
+                {/* Meta-Infos */}
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 1 }}
+                >
+                  Erstellt von <b>{formatCreatedBy(entry.createdBy)}</b> •{" "}
+                  {formatDate(entry.createdAt)} • zuletzt geändert{" "}
+                  {formatDate(entry.updatedAt)}
+                </Typography>
+
                 <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
                   {entry.content}
                 </Typography>
@@ -391,7 +418,6 @@ export default function Wiki() {
           </CardContent>
         </Card>
       ))}
-
     </Stack>
   );
 }

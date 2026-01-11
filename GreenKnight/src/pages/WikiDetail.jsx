@@ -1,3 +1,4 @@
+// src/pages/WikiDetail.jsx
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -20,6 +21,23 @@ export default function WikiDetail() {
   const [entry, setEntry] = useState(null);
   const [error, setError] = useState(null);
   const [imgOpen, setImgOpen] = useState(false);
+
+  const formatDate = (iso) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const formatCreatedBy = (createdBy) => {
+    if (!createdBy) return "Unbekannt";
+    if (typeof createdBy === "string") return createdBy; // falls nur ID kommt
+    return createdBy.username || createdBy.name || createdBy.email || "Unbekannt";
+  };
 
   useEffect(() => {
     if (!accessToken) return;
@@ -68,6 +86,13 @@ export default function WikiDetail() {
           <CardContent>
             <Typography variant="h4" gutterBottom>
               {entry.title}
+            </Typography>
+
+            {/* Meta-Infos */}
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Erstellt von <b>{formatCreatedBy(entry.createdBy)}</b> •{" "}
+              {formatDate(entry.createdAt)} • zuletzt geändert{" "}
+              {formatDate(entry.updatedAt)}
             </Typography>
 
             {(entry.thumbnailUrl || entry.imageUrl) && (

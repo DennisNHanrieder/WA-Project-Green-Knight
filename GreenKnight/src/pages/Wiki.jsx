@@ -14,9 +14,11 @@ import {
   Box,
 } from "@mui/material";
 import { useAuth } from "../auth/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function Wiki() {
   const { accessToken } = useAuth();
+  const navigate = useNavigate();
 
   const [entries, setEntries] = useState([]);
   const [newEntry, setNewEntry] = useState({ title: "", content: "" });
@@ -36,6 +38,23 @@ export default function Wiki() {
   const authHeadersJson = {
     Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
+  };
+
+  const formatDate = (iso) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const formatCreatedBy = (createdBy) => {
+    if (!createdBy) return "Unbekannt";
+    if (typeof createdBy === "string") return createdBy; // falls nur ID kommt
+    return createdBy.username || createdBy.name || createdBy.email || "Unbekannt";
   };
 
   const resetAddForm = () => {
@@ -83,9 +102,6 @@ export default function Wiki() {
       formData.append("title", newEntry.title.trim());
       formData.append("content", newEntry.content.trim());
 
-      // Backend-Feldname:
-      // Wenn dein Backend upload.single("thumbnail") nutzt -> "thumbnail"
-      // Wenn dein Backend upload.single("image") nutzt -> "image"
       if (thumbnail) formData.append("thumbnail", thumbnail);
 
       const res = await fetch("/api/wiki", {
@@ -101,7 +117,6 @@ export default function Wiki() {
         throw new Error(data.error || `Fehler ${res.status}`);
       }
 
-      // UI reset + Dialog schließen
       resetAddForm();
       setAddOpen(false);
 
@@ -236,7 +251,6 @@ export default function Wiki() {
                     return;
                   }
 
-                  // alte Preview freigeben, sonst Memory Leak
                   if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
 
                   setThumbnail(file);
@@ -290,10 +304,14 @@ export default function Wiki() {
 
       {/* Entries */}
       {entries.map((entry) => (
-        <Card key={entry._id}>
+        <Card
+          key={entry._id}
+          sx={{ cursor: "pointer" }}
+          onClick={() => navigate(`/wiki/${entry._id}`)}
+        >
           <CardContent>
             {editing === entry._id ? (
-              <Stack spacing={1}>
+              <Stack spacing={1} onClick={(e) => e.stopPropagation()}>
                 <TextField
                   label="Titel"
                   value={editData.title}
@@ -316,13 +334,17 @@ export default function Wiki() {
                 <Stack direction="row" spacing={1}>
                   <Button
                     variant="contained"
-                    onClick={() => handleSaveEdit(entry._id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSaveEdit(entry._id);
+                    }}
                   >
                     Speichern
                   </Button>
                   <Button
                     variant="outlined"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setEditing(null);
                       setEditData({ title: "", content: "" });
                     }}
@@ -334,6 +356,23 @@ export default function Wiki() {
             ) : (
               <>
                 <Typography variant="h6">{entry.title}</Typography>
+
+                {/* Meta-Infos */}
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 1 }}
+                >
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    Erstellt von <b>{formatCreatedBy(entry.createdBy)}</b> •{" "}
+                    {formatDate(entry.createdAt)} •{" "}
+                    zuletzt geändert von {" "}
+                    <b>{entry.updatedBy ? formatCreatedBy(entry.updatedBy) : "—"}</b>{" "}
+                    {entry.updatedAt ? `• ${formatDate(entry.updatedAt)}` : ""}
+                  </Typography>
+
+                </Typography>
+
                 <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
                   {entry.content}
                 </Typography>
@@ -349,18 +388,28 @@ export default function Wiki() {
                         objectFit: "cover",
                         borderRadius: 8,
                       }}
+                      onClick={(e) => e.stopPropagation()}
                     />
                   </Box>
                 )}
 
                 <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                  <Button variant="outlined" onClick={() => startEdit(entry)}>
+                  <Button
+                    variant="outlined"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startEdit(entry);
+                    }}
+                  >
                     Bearbeiten
                   </Button>
                   <Button
                     variant="outlined"
                     color="error"
-                    onClick={() => handleDelete(entry._id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(entry._id);
+                    }}
                   >
                     ❌ Löschen
                   </Button>

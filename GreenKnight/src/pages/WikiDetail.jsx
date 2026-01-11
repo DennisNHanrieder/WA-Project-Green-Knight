@@ -91,9 +91,12 @@ export default function WikiDetail() {
             {/* Meta-Infos */}
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Erstellt von <b>{formatCreatedBy(entry.createdBy)}</b> •{" "}
-              {formatDate(entry.createdAt)} • zuletzt geändert{" "}
-              {formatDate(entry.updatedAt)}
+              {formatDate(entry.createdAt)} •{" "}
+              zuletzt geändert von {" "}
+              <b>{entry.updatedBy ? formatCreatedBy(entry.updatedBy) : "—"}</b>{" "}
+              {entry.updatedAt ? `• ${formatDate(entry.updatedAt)}` : ""}
             </Typography>
+
 
             {(entry.thumbnailUrl || entry.imageUrl) && (
               <Box

@@ -452,6 +452,9 @@ app.put(
         update.thumbnailUrl = `/uploads/${req.file.filename}`;
       }
 
+      update.updatedAt = new Date();
+      update.updatedBy = req.user?.username || null;
+
       const result = await db.collection("wiki").updateOne(
         { _id: id },
         { $set: update }

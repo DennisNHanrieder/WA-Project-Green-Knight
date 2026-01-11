@@ -102,9 +102,6 @@ export default function Wiki() {
       formData.append("title", newEntry.title.trim());
       formData.append("content", newEntry.content.trim());
 
-      // Backend-Feldname:
-      // Wenn dein Backend upload.single("thumbnail") nutzt -> "thumbnail"
-      // Wenn dein Backend upload.single("image") nutzt -> "image"
       if (thumbnail) formData.append("thumbnail", thumbnail);
 
       const res = await fetch("/api/wiki", {
@@ -254,7 +251,6 @@ export default function Wiki() {
                     return;
                   }
 
-                  // alte Preview freigeben, sonst Memory Leak
                   if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
 
                   setThumbnail(file);
@@ -367,9 +363,14 @@ export default function Wiki() {
                   color="text.secondary"
                   sx={{ mb: 1 }}
                 >
-                  Erstellt von <b>{formatCreatedBy(entry.createdBy)}</b> •{" "}
-                  {formatDate(entry.createdAt)} • zuletzt geändert{" "}
-                  {formatDate(entry.updatedAt)}
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    Erstellt von <b>{formatCreatedBy(entry.createdBy)}</b> •{" "}
+                    {formatDate(entry.createdAt)} •{" "}
+                    zuletzt geändert von {" "}
+                    <b>{entry.updatedBy ? formatCreatedBy(entry.updatedBy) : "—"}</b>{" "}
+                    {entry.updatedAt ? `• ${formatDate(entry.updatedAt)}` : ""}
+                  </Typography>
+
                 </Typography>
 
                 <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>

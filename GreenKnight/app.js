@@ -210,6 +210,26 @@ app.get("/api/hello", (req, res) => {
   res.json({ message: `Hello from PlantCare API, ${req.user.username}!` });
 });
 
+// ---------- Todo-Intervall Helper ----------
+function addInterval(date, every, unit) {
+  const d = new Date(date);
+  const n = Number(every);
+  if (!Number.isFinite(n) || n <= 0) return null;
+
+  if (unit === "day") {
+    d.setDate(d.getDate() + n);
+    return d;
+  }
+
+  if (unit === "month") {
+    d.setMonth(d.getMonth() + n);
+    return d;
+  }
+
+  return null;
+}
+
+
 // ---------- Plants CRUD ----------
 
 // Alle Pflanzen
@@ -294,22 +314,62 @@ app.post("/api/plants/:id/todos", async (req, res) => {
     const db = req.app.get("db");
     const id = new ObjectId(req.params.id);
 
+    const { task, repeatEvery, repeatUnit } = req.body;
+
+    if (!task || !String(task).trim()) {
+      return res.status(400).json({ error: "task ist erforderlich" });
+    }
+
+    // interval optional
+    const hasEvery = repeatEvery !== undefined && repeatEvery !== null && repeatEvery !== "";
+    const hasUnit = repeatUnit !== undefined && repeatUnit !== null && repeatUnit !== "";
+
+    let every = null;
+    let unit = null;
+
+    if (hasEvery || hasUnit) {
+      every = Number(repeatEvery);
+      unit = repeatUnit;
+
+      if (!Number.isFinite(every) || every <= 0) {
+        return res.status(400).json({ error: "repeatEvery muss > 0 sein" });
+      }
+      if (unit !== "day" && unit !== "month") {
+        return res.status(400).json({ error: "repeatUnit muss 'day' oder 'month' sein" });
+      }
+    }
+
+    const now = new Date();
+
+    const todo = {
+      task: String(task).trim(),
+      done: false,
+
+      repeatEvery: every,        
+      repeatUnit: unit,          
+      lastDoneAt: null,
+      nextDueAt: every && unit ? addInterval(now, every, unit) : null,
+
+      createdAt: now,
+    };
+
     const result = await db.collection("plants").updateOne(
       { _id: id },
-      { $push: { todos: req.body } }
+      { $push: { todos: todo } }
     );
 
     if (result.modifiedCount === 1) {
       const updated = await db.collection("plants").findOne({ _id: id });
-      res.status(201).json(updated);
-    } else {
-      res.status(404).send("Pflanze nicht gefunden");
+      return res.status(201).json(updated);
     }
+
+    res.status(404).send("Pflanze nicht gefunden");
   } catch (err) {
     console.error(err);
     res.status(500).send("Fehler beim Hinzufügen des To-Dos");
   }
 });
+
 
 // ToDo done status ändern
 app.put("/api/plants/:plantId/todos/:todoIndex", async (req, res) => {
@@ -327,6 +387,18 @@ app.put("/api/plants/:plantId/todos/:todoIndex", async (req, res) => {
 
     plant.todos[todoIndex].done = done;
 
+    // When checked: lastDoneAt + nextDueAt neu setzen
+    if (done === true) {
+      const now = new Date();
+      plant.todos[todoIndex].lastDoneAt = now;
+
+      const every = plant.todos[todoIndex].repeatEvery;
+      const unit = plant.todos[todoIndex].repeatUnit;
+
+      plant.todos[todoIndex].nextDueAt =
+        every && unit ? addInterval(now, every, unit) : null;
+    }
+
     await db.collection("plants").updateOne(
       { _id: id },
       { $set: { todos: plant.todos } }
@@ -338,6 +410,7 @@ app.put("/api/plants/:plantId/todos/:todoIndex", async (req, res) => {
     res.status(500).send("Fehler beim Aktualisieren des To-Dos");
   }
 });
+
 
 // ToDo löschen
 app.delete("/api/plants/:plantId/todos/:todoIndex", async (req, res) => {

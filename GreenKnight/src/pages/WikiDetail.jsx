@@ -1,6 +1,5 @@
 // src/pages/WikiDetail.jsx
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
 import {
   Typography,
   Stack,
@@ -8,10 +7,24 @@ import {
   CardContent,
   Button,
   Box,
-  Dialog,
-  DialogContent,
+  TextField,
+  Container,
 } from "@mui/material";
+import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+
+function formatDateTime(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export default function WikiDetail() {
   const { id } = useParams();
@@ -20,150 +33,206 @@ export default function WikiDetail() {
 
   const [entry, setEntry] = useState(null);
   const [error, setError] = useState(null);
-  const [imgOpen, setImgOpen] = useState(false);
 
-  const formatDate = (iso) => {
-    if (!iso) return "—";
-    return new Date(iso).toLocaleString("de-DE", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  const [editing, setEditing] = useState(false);
+  const [editData, setEditData] = useState({ title: "", content: "" });
 
-  const formatCreatedBy = (createdBy) => {
-    if (!createdBy) return "Unbekannt";
-    if (typeof createdBy === "string") return createdBy; // falls nur ID kommt
-    return createdBy.username || createdBy.name || createdBy.email || "Unbekannt";
+  const loadEntry = async () => {
+    if (!accessToken) return;
+
+    try {
+      const res = await fetch(`/api/wiki/${id}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Fehler ${res.status}`);
+      }
+
+      const data = await res.json();
+      setEntry(data);
+      setEditData({ title: data.title || "", content: data.content || "" });
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
   };
 
   useEffect(() => {
-    if (!accessToken) return;
-
-    const loadEntry = async () => {
-      try {
-        const res = await fetch(`/api/wiki/${id}`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || `Fehler ${res.status}`);
-        }
-
-        const data = await res.json();
-        setEntry(data);
-        setError(null);
-      } catch (err) {
-        console.error(err);
-        setError(err.message);
-      }
-    };
-
     loadEntry();
-  }, [id, accessToken]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken, id]);
+
+  const authHeadersJson = {
+    Authorization: `Bearer ${accessToken}`,
+    "Content-Type": "application/json",
+  };
+
+  const handleSave = async () => {
+    try {
+      const res = await fetch(`/api/wiki/${id}`, {
+        method: "PUT",
+        headers: authHeadersJson,
+        body: JSON.stringify({
+          title: editData.title,
+          content: editData.content,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Fehler ${res.status}`);
+      }
+
+      setEditing(false);
+      await loadEntry();
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      const res = await fetch(`/api/wiki/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!res.ok && res.status !== 204) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Fehler ${res.status}`);
+      }
+
+      navigate("/wiki");
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
+  };
+
+  const imageSrc = entry?.thumbnailUrl || entry?.imageUrl || null;
 
   return (
-    <Stack spacing={2} sx={{ p: 2 }}>
-      <Button variant="outlined" onClick={() => navigate(-1)}>
-        ← Zurück
-      </Button>
+    <Container maxWidth="md">
+      <Stack spacing={2} sx={{ py: 3 }}>
+        <Button variant="outlined" onClick={() => navigate("/wiki")}>
+          ← Zurück
+        </Button>
 
-      {error && (
-        <Typography color="error" variant="body2">
-          Fehler: {error}
-        </Typography>
-      )}
+        {error && (
+          <Typography color="error" variant="body2">
+            {error}
+          </Typography>
+        )}
 
-      {!entry && !error && <Typography>Lade…</Typography>}
+        {!entry && !error && <Typography>Lade…</Typography>}
 
-      {entry && (
-        <Card>
-          <CardContent>
-            <Typography variant="h4" gutterBottom>
-              {entry.title}
-            </Typography>
+        {entry && (
+          <Card>
+            <CardContent>
+              {editing ? (
+                <Stack spacing={2}>
+                  <TextField
+                    label="Titel"
+                    value={editData.title}
+                    onChange={(e) =>
+                      setEditData((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
+                    fullWidth
+                  />
+                  <TextField
+                    label="Inhalt"
+                    value={editData.content}
+                    onChange={(e) =>
+                      setEditData((prev) => ({
+                        ...prev,
+                        content: e.target.value,
+                      }))
+                    }
+                    multiline
+                    minRows={6}
+                    fullWidth
+                  />
 
-            {/* Meta-Infos */}
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Erstellt von <b>{formatCreatedBy(entry.createdBy)}</b> •{" "}
-              {formatDate(entry.createdAt)} •{" "}
-              zuletzt geändert von {" "}
-              <b>{entry.updatedBy ? formatCreatedBy(entry.updatedBy) : "—"}</b>{" "}
-              {entry.updatedAt ? `• ${formatDate(entry.updatedAt)}` : ""}
-            </Typography>
+                  <Stack direction="row" spacing={1}>
+                    <Button variant="contained" onClick={handleSave}>
+                      Speichern
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={() => {
+                        setEditing(false);
+                        setEditData({
+                          title: entry.title || "",
+                          content: entry.content || "",
+                        });
+                      }}
+                    >
+                      Abbrechen
+                    </Button>
+                  </Stack>
+                </Stack>
+              ) : (
+                <>
+                  <Typography variant="h4" sx={{ mb: 0.5 }}>
+                    {entry.title}
+                  </Typography>
 
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Erstellt von <b>{entry.createdBy || "Unbekannt"}</b> •{" "}
+                    {formatDateTime(entry.createdAt)} • zuletzt geändert von{" "}
+                    <b>{entry.updatedBy || "—"}</b> •{" "}
+                    {formatDateTime(entry.updatedAt)}
+                  </Typography>
 
-            {(entry.thumbnailUrl || entry.imageUrl) && (
-              <Box
-                sx={{
-                  mt: 2,
-                  mb: 2,
-                  width: "100%",
-                  maxHeight: "70vh",
-                  bgcolor: "#f3f3f3",
-                  borderRadius: 2,
-                  overflow: "hidden",
-                }}
-              >
-                <img
-                  src={entry.thumbnailUrl || entry.imageUrl}
-                  alt={entry.title}
-                  onClick={() => setImgOpen(true)}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    maxHeight: "70vh",
-                    objectFit: "contain",
-                    display: "block",
-                    cursor: "zoom-in",
-                  }}
-                />
-              </Box>
-            )}
+                  {imageSrc && (
+                    <Box
+                      sx={{
+                        width: "100%",
+                        borderRadius: 2,
+                        overflow: "hidden",
+                        mb: 2,
+                        border: "1px solid rgba(0,0,0,0.08)",
+                      }}
+                    >
+                      <img
+                        src={imageSrc}
+                        alt={entry.title}
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          maxHeight: 520,
+                          objectFit: "contain",
+                          background: "#f6f6f6",
+                        }}
+                      />
+                    </Box>
+                  )}
 
-            <Typography sx={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
-              {entry.content}
-            </Typography>
-          </CardContent>
-        </Card>
-      )}
+                  <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
+                    {entry.content}
+                  </Typography>
 
-      {/* Lightbox */}
-      <Dialog
-        open={imgOpen}
-        onClose={() => setImgOpen(false)}
-        maxWidth="lg"
-        fullWidth
-      >
-        <DialogContent sx={{ p: 0, bgcolor: "#000" }}>
-          <Box
-            sx={{
-              width: "100%",
-              height: "80vh",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <img
-              src={entry?.thumbnailUrl || entry?.imageUrl}
-              alt={entry?.title}
-              onClick={() => setImgOpen(false)}
-              style={{
-                maxWidth: "100%",
-                maxHeight: "100%",
-                objectFit: "contain",
-                cursor: "zoom-out",
-              }}
-            />
-          </Box>
-        </DialogContent>
-      </Dialog>
-    </Stack>
+                  <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                    <Button variant="outlined" onClick={() => setEditing(true)}>
+                      Bearbeiten
+                    </Button>
+                    <Button variant="outlined" color="error" onClick={handleDelete}>
+                      ❌ Löschen
+                    </Button>
+                  </Stack>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </Stack>
+    </Container>
   );
 }

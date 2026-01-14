@@ -1,5 +1,5 @@
 // src/pages/MeinePflanzen.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Typography,
   Stack,
@@ -14,40 +14,29 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Container,
+  MenuItem,
 } from "@mui/material";
-import { useAuth } from "../auth/AuthContext";
 
-function formatTodoLabel(todo) {
-  const task = todo?.task ?? "";
-  if (todo?.repeatEvery && todo?.repeatUnit) {
-    const unitLabel = todo.repeatUnit === "day" ? "Tag" : "Monat";
-    return `${task} ${todo.repeatEvery}x ${unitLabel}`;
-  }
-  return task;
-}
+import { useAuth } from "../auth/AuthContext";
 
 export default function MeinePflanzen() {
   const { accessToken } = useAuth();
 
   const [plants, setPlants] = useState([]);
+  const [newPlantName, setNewPlantName] = useState("");
+  const [newTodos, setNewTodos] = useState({});
   const [error, setError] = useState(null);
 
-  // Plant add
-  const [newPlantName, setNewPlantName] = useState("");
   const [newPlantImage, setNewPlantImage] = useState(null);
   const [description, setDescription] = useState("");
+
   const [addOpen, setAddOpen] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
 
-  const [newTodos, setNewTodos] = useState({});
-
-  const authHeadersJson = useMemo(
-    () => ({
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    }),
-    [accessToken]
-  );
+  // Neu: Interval Inputs pro Pflanze
+  const [todoEvery, setTodoEvery] = useState({});
+  const [todoUnit, setTodoUnit] = useState({});
 
   const resetAddForm = () => {
     setNewPlantName("");
@@ -56,8 +45,14 @@ export default function MeinePflanzen() {
     setImagePreviewUrl(null);
   };
 
+  const authHeaders = {
+    Authorization: `Bearer ${accessToken}`,
+    "Content-Type": "application/json",
+  };
+
   const loadPlants = async () => {
     if (!accessToken) return;
+
     try {
       const res = await fetch("/api/plants", {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -90,11 +85,15 @@ export default function MeinePflanzen() {
       formData.append("name", newPlantName);
       formData.append("description", description);
 
-      if (newPlantImage) formData.append("image", newPlantImage);
+      if (newPlantImage) {
+        formData.append("image", newPlantImage);
+      }
 
       const res = await fetch("/api/plants", {
         method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: formData,
       });
 
@@ -104,10 +103,15 @@ export default function MeinePflanzen() {
       }
 
       if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-      resetAddForm();
+
+      setNewPlantName("");
+      setDescription("");
+      setNewPlantImage(null);
+      setImagePreviewUrl(null);
 
       await loadPlants();
       setError(null);
+
       return true;
     } catch (err) {
       console.error(err);
@@ -135,29 +139,23 @@ export default function MeinePflanzen() {
     }
   };
 
-  const ensureTodoState = (plantId) => {
-    setNewTodos((prev) => {
-      if (prev[plantId]) return prev;
-      return {
-        ...prev,
-        [plantId]: { task: "", repeatEvery: 1, repeatUnit: "day" },
-      };
-    });
-  };
-
   const handleAddTodo = async (plantId) => {
-    const todoState = newTodos[plantId] || { task: "", repeatEvery: 1, repeatUnit: "day" };
-    const task = (todoState.task || "").trim();
-    if (!task) return;
+    const text = (newTodos[plantId] || "").trim();
+    if (!text) return;
+
+    const repeatEvery = Number(todoEvery[plantId] ?? 1);
+    const repeatUnit = todoUnit[plantId] ?? "day";
 
     try {
       const res = await fetch(`/api/plants/${plantId}/todos`, {
         method: "POST",
-        headers: authHeadersJson,
+        headers: authHeaders,
         body: JSON.stringify({
-          task,
-          repeatEvery: Number(todoState.repeatEvery),
-          repeatUnit: todoState.repeatUnit,
+          task: text,
+          done: false,
+          repeatEvery,
+          repeatUnit,
+          createdAt: new Date().toISOString(),
         }),
       });
 
@@ -166,12 +164,7 @@ export default function MeinePflanzen() {
         throw new Error(data.error || `Fehler ${res.status}`);
       }
 
-      // Reset input nur für diese Pflanze
-      setNewTodos((prev) => ({
-        ...prev,
-        [plantId]: { task: "", repeatEvery: 1, repeatUnit: "day" },
-      }));
-
+      setNewTodos((prev) => ({ ...prev, [plantId]: "" }));
       await loadPlants();
     } catch (err) {
       console.error(err);
@@ -183,7 +176,7 @@ export default function MeinePflanzen() {
     try {
       const res = await fetch(`/api/plants/${plantId}/todos/${index}`, {
         method: "PUT",
-        headers: authHeadersJson,
+        headers: authHeaders,
         body: JSON.stringify({ done }),
       });
 
@@ -219,134 +212,131 @@ export default function MeinePflanzen() {
   };
 
   return (
-    <Stack spacing={2} sx={{ p: 2 }}>
-      <Typography variant="h4" gutterBottom>
-        Meine Pflanzen
-      </Typography>
-
-      {error && (
-        <Typography color="error" variant="body2">
-          {error}
+    <Container maxWidth="md">
+      <Stack spacing={2} sx={{ py: 3 }}>
+        <Typography variant="h4" gutterBottom>
+          Meine Pflanzen
         </Typography>
-      )}
 
-      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-        <Button
-          variant="contained"
-          onClick={() => {
-            resetAddForm();
-            setAddOpen(true);
-          }}
-        >
-          Hinzufügen
-        </Button>
-      </Stack>
+        {error && (
+          <Typography color="error" variant="body2">
+            {error}
+          </Typography>
+        )}
 
-      {/* Add Plant Dialog */}
-      <Dialog
-        open={addOpen}
-        onClose={() => {
-          resetAddForm();
-          setAddOpen(false);
-        }}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Neue Pflanze hinzufügen</DialogTitle>
-
-        <DialogContent sx={{ pt: 1 }}>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              label="Name"
-              value={newPlantName}
-              onChange={(e) => setNewPlantName(e.target.value)}
-              autoFocus
-              fullWidth
-            />
-
-            <TextField
-              label="Beschreibung"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              multiline
-              rows={3}
-              fullWidth
-            />
-
-            <Button variant="outlined" component="label">
-              Bild wählen
-              <input
-                type="file"
-                hidden
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] ?? null;
-                  setNewPlantImage(file);
-
-                  if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-                  setImagePreviewUrl(file ? URL.createObjectURL(file) : null);
-                }}
-              />
-            </Button>
-
-            {newPlantImage && (
-              <Typography variant="body2" color="text.secondary">
-                Ausgewählt: {newPlantImage.name}
-              </Typography>
-            )}
-
-            {imagePreviewUrl && (
-              <Box sx={{ mt: 1 }}>
-                <img
-                  src={imagePreviewUrl}
-                  alt="Vorschau"
-                  style={{
-                    width: "100%",
-                    maxHeight: 220,
-                    objectFit: "cover",
-                    borderRadius: 8,
-                  }}
-                />
-              </Box>
-            )}
-          </Stack>
-        </DialogContent>
-
-        <DialogActions>
-          <Button
-            onClick={() => {
-              if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-              setImagePreviewUrl(null);
-              setAddOpen(false);
-            }}
-          >
-            Abbrechen
-          </Button>
-
+        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
           <Button
             variant="contained"
-            onClick={async () => {
-              const success = await handleAddPlant();
-              if (success) setAddOpen(false);
+            onClick={() => {
+              resetAddForm();
+              setAddOpen(true);
             }}
-            disabled={!newPlantName.trim()}
           >
-            Speichern
+            Hinzufügen
           </Button>
-        </DialogActions>
-      </Dialog>
+        </Stack>
 
-      {/* Plants */}
-      {plants.map((plant) => {
-        if (!newTodos[plant._id]) {
-        }
+        <Dialog
+          open={addOpen}
+          onClose={() => {
+            resetAddForm();
+            setAddOpen(false);
+          }}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>Neue Pflanze hinzufügen</DialogTitle>
 
-        const todoState = newTodos[plant._id] || { task: "", repeatEvery: 1, repeatUnit: "day" };
+          <DialogContent sx={{ pt: 1 }}>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <TextField
+                label="Name"
+                value={newPlantName}
+                onChange={(e) => setNewPlantName(e.target.value)}
+                autoFocus
+                fullWidth
+              />
 
-        return (
+              <TextField
+                label="Beschreibung"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                multiline
+                rows={3}
+                fullWidth
+              />
+
+              <Button variant="outlined" component="label">
+                Bild wählen
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null;
+                    setNewPlantImage(file);
+
+                    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+                    setImagePreviewUrl(file ? URL.createObjectURL(file) : null);
+                  }}
+                />
+              </Button>
+
+              {newPlantImage && (
+                <Typography variant="body2" color="text.secondary">
+                  Ausgewählt: {newPlantImage.name}
+                </Typography>
+              )}
+
+              {imagePreviewUrl && (
+                <Box sx={{ mt: 1 }}>
+                  <img
+                    src={imagePreviewUrl}
+                    alt="Vorschau"
+                    style={{
+                      width: "100%",
+                      maxHeight: 220,
+                      objectFit: "cover",
+                      borderRadius: 8,
+                    }}
+                  />
+                </Box>
+              )}
+            </Stack>
+          </DialogContent>
+
+          <DialogActions>
+            <Button
+              onClick={() => {
+                if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+                setImagePreviewUrl(null);
+                setAddOpen(false);
+              }}
+            >
+              Abbrechen
+            </Button>
+
+            <Button
+              variant="contained"
+              onClick={async () => {
+                const success = await handleAddPlant();
+                if (success) setAddOpen(false);
+              }}
+              disabled={!newPlantName.trim()}
+            >
+              Speichern
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {plants.map((plant) => (
           <Card key={plant._id}>
             <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+              >
                 <Typography variant="h6">{plant.name}</Typography>
 
                 <Button
@@ -359,7 +349,11 @@ export default function MeinePflanzen() {
               </Stack>
 
               {plant.description && (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 1 }}
+                >
                   {plant.description}
                 </Typography>
               )}
@@ -381,20 +375,22 @@ export default function MeinePflanzen() {
                     direction="row"
                     alignItems="center"
                     justifyContent="space-between"
-                    gap={1}
                   >
                     <FormControlLabel
                       control={
                         <Checkbox
                           checked={!!todo.done}
                           onChange={(e) =>
-                            handleToggleTodo(plant._id, index, e.target.checked)
+                            handleToggleTodo(
+                              plant._id,
+                              index,
+                              e.target.checked
+                            )
                           }
                         />
                       }
-                      label={formatTodoLabel(todo)}
+                      label={todo.task}
                     />
-
                     <Button
                       size="small"
                       color="error"
@@ -405,66 +401,62 @@ export default function MeinePflanzen() {
                   </Stack>
                 ))}
 
-                {/* Todo row */}
-                <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems="center">
+                <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                   <TextField
                     size="small"
                     label="Neues To-Do"
-                    value={todoState.task}
-                    onFocus={() => ensureTodoState(plant._id)}
+                    value={newTodos[plant._id] || ""}
                     onChange={(e) =>
                       setNewTodos((prev) => ({
                         ...prev,
-                        [plant._id]: { ...todoState, task: e.target.value },
+                        [plant._id]: e.target.value,
                       }))
                     }
-                    sx={{ flex: 1, minWidth: 220 }}
+                    fullWidth
                   />
 
                   <TextField
                     size="small"
                     label="Wie oft?"
-                    type="number"
-                    value={todoState.repeatEvery}
-                    onFocus={() => ensureTodoState(plant._id)}
+                    value={todoEvery[plant._id] ?? 1}
                     onChange={(e) =>
-                      setNewTodos((prev) => ({
+                      setTodoEvery((prev) => ({
                         ...prev,
-                        [plant._id]: { ...todoState, repeatEvery: e.target.value },
+                        [plant._id]: e.target.value,
                       }))
                     }
-                    inputProps={{ min: 1 }}
-                    sx={{ width: { xs: "100%", md: 140 } }}
+                    sx={{ width: 120 }}
                   />
 
                   <TextField
                     size="small"
                     select
                     label="Zeitraum"
-                    value={todoState.repeatUnit}
-                    onFocus={() => ensureTodoState(plant._id)}
+                    value={todoUnit[plant._id] ?? "day"}
                     onChange={(e) =>
-                      setNewTodos((prev) => ({
+                      setTodoUnit((prev) => ({
                         ...prev,
-                        [plant._id]: { ...todoState, repeatUnit: e.target.value },
+                        [plant._id]: e.target.value,
                       }))
                     }
-                    SelectProps={{ native: true }}
-                    sx={{ width: { xs: "100%", md: 160 } }}
+                    sx={{ width: 140 }}
                   >
-                    <option value="day">Tag</option>
-                    <option value="month">Monat</option>
+                    <MenuItem value="day">Tag</MenuItem>
+                    <MenuItem value="month">Monat</MenuItem>
                   </TextField>
 
-                  <Button variant="contained" onClick={() => handleAddTodo(plant._id)}>
+                  <Button
+                    variant="contained"
+                    onClick={() => handleAddTodo(plant._id)}
+                  >
                     ➕
                   </Button>
                 </Stack>
               </Stack>
             </CardContent>
           </Card>
-        );
-      })}
-    </Stack>
+        ))}
+      </Stack>
+    </Container>
   );
 }

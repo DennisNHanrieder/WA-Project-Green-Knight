@@ -111,7 +111,7 @@ export default function Dashboard() {
     }
   };
 
-  // Haben wir überhaupt Todos?
+  //Todos da?
   const totalTodos = (plants || []).reduce(
     (sum, p) => sum + ((p.todos || []).length || 0),
     0
@@ -120,7 +120,6 @@ export default function Dashboard() {
   return (
     <Stack spacing={2} sx={{ p: 2 }}>
       <Typography variant="h4" gutterBottom>
-        {/* du hattest "Deine heutigen To-Dos" im UI */}
         {t("dashboard.title", "Deine heutigen To-Dos")}
       </Typography>
 
@@ -130,15 +129,15 @@ export default function Dashboard() {
         </Typography>
       )}
 
-      <FormControlLabel
-        control={
-          <Switch
-            checked={showTimers}
-            onChange={(e) => setShowTimers(e.target.checked)}
-          />
-        }
-        label="Wasser-Timer anzeigen"
-      />
+      <Stack direction="row" alignItems="center" spacing={1}>
+        <Switch
+          checked={showTimers}
+          onChange={(e) => setShowTimers(e.target.checked)}
+        />
+        <Typography variant="body1">
+          Wasser-Timer anzeigen
+        </Typography>
+      </Stack>
 
       {totalTodos === 0 && !error && (
         <Typography variant="body1">
@@ -146,7 +145,7 @@ export default function Dashboard() {
         </Typography>
       )}
 
-      {/* ✅ Gruppiert: eine Card pro Pflanze */}
+      {/* Gruppiert: eine Card pro Pflanze */}
       {(plants || [])
         .filter((p) => (p.todos || []).length > 0)
         .map((plant) => (
@@ -160,7 +159,7 @@ export default function Dashboard() {
                 {(plant.todos || []).map((todo, idx) => {
                   const label = formatTodoLabel(todo);
 
-                  // ✅ Timer-Fallback: nextDueAt ODER berechnet aus lastDoneAt/createdAt + Intervall
+                  // Timer-Fallback: nextDueAt ODER berechnet aus lastDoneAt/createdAt + Intervall
                   const computedNextDueAt = (() => {
                     if (todo?.nextDueAt) return new Date(todo.nextDueAt);
 
@@ -210,7 +209,7 @@ export default function Dashboard() {
                           </Box>
                         }
                       />
-                      {/* Trennlinie zwischen Todos, aber nicht nach dem letzten */}
+                      {/* Trennlinie zwischen Todos */}
                       {idx < (plant.todos || []).length - 1 && (
                         <Divider sx={{ my: 0.5 }} />
                       )}

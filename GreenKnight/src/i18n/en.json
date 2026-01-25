@@ -5,16 +5,90 @@
     "myPlants": "My Plants",
     "wiki": "Wiki"
   },
+
   "dashboard": {
     "title": "📅 Your Today's To-Dos",
-    "subtitle": "See all your tasks for today."
+    "subtitle": "See all your tasks for today.",
+    "noTodos": "No to-dos available.",
+    "showTimer": "Show watering timer"
   },
+
+  "login": {
+    "title": "Login",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Login",
+    "noAccount": "No account yet?",
+    "register": "Register"
+  },
+
+  "register": {
+    "title": "Register",
+    "username": "Username",
+    "email": "Email (optional)",
+    "password": "Password",
+    "submit": "Register",
+    "hasAccount": "Already have an account?",
+    "login": "Go to login"
+  },
+
   "plants": {
-    "title": "🌱 Your Plants",
-    "subtitle": "Take care of your plants and add new ones."
+    "title": "My Plants",
+    "add": "Add",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+
+    "addDialog": {
+      "title": "Add new plant",
+      "name": "Name",
+      "description": "Description",
+      "chooseImage": "Choose image",
+      "selectedImage": "Selected"
+    },
+
+    "todos": {
+      "new": "New to-do",
+      "every": "How often?",
+      "unit": "Interval",
+      "day": "Day",
+      "month": "Month"
+    }
   },
+
   "wiki": {
-    "title": "📖 Plant Wiki",
-    "subtitle": "Find information about plant care, light and watering."
+    "title": "Wiki",
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back",
+
+    "addDialog": {
+      "title": "Add new wiki entry",
+      "titleLabel": "Title",
+      "contentLabel": "Content",
+      "chooseThumbnail": "Choose thumbnail",
+      "selected": "Selected"
+    },
+
+    "meta": {
+      "createdBy": "Created by",
+      "updatedBy": "last updated by",
+      "unknown": "Unknown"
+    },
+
+    "loading": "Loading…"
+  },
+
+  "errors": {
+    "unauthorized": "Unauthorized"
+  },
+
+  "layout": {
+    "loggedInAs": "Logged in as",
+    "logout": "Logout"
   }
+
 }

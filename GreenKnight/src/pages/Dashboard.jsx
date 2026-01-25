@@ -51,7 +51,9 @@ export default function Dashboard() {
         }
 
         const data = await res.json();
-        if (!Array.isArray(data)) throw new Error("Unerwartetes Antwortformat");
+        if (!Array.isArray(data)) {
+          throw new Error("Unerwartetes Antwortformat");
+        }
 
         setPlants(data);
         setError(null);
@@ -90,10 +92,10 @@ export default function Dashboard() {
     if (!every || !(unit === "day" || unit === "month")) return null;
 
     const base = todo.lastDoneAt
-      ? new Date(todo.lastDoneAt)
-      : todo.createdAt
-      ? new Date(todo.createdAt)
-      : null;
+        ? new Date(todo.lastDoneAt)
+        : todo.createdAt
+            ? new Date(todo.createdAt)
+            : null;
 
     if (!base || isNaN(base.getTime())) return null;
 
@@ -106,89 +108,102 @@ export default function Dashboard() {
   // Gruppiert: alle Todos je Pflanze zusammen
   const plantsWithTodos = useMemo(() => {
     return (Array.isArray(plants) ? plants : [])
-      .filter((p) => (p.todos || []).length > 0)
-      .map((p) => ({
-        _id: p._id,
-        name: p.name,
-        todos: p.todos || [],
-      }));
+        .filter((p) => (p.todos || []).length > 0)
+        .map((p) => ({
+          _id: p._id,
+          name: p.name,
+          todos: p.todos || [],
+        }));
   }, [plants]);
 
-  const totalTodos = plantsWithTodos.reduce((acc, p) => acc + p.todos.length, 0);
+  const totalTodos = plantsWithTodos.reduce(
+      (acc, p) => acc + p.todos.length,
+      0
+  );
 
   return (
-    <Container maxWidth="md">
-      <Stack spacing={2} sx={{ py: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          {t("dashboard.title", "Deine heutigen To-Dos")}
-        </Typography>
-
-        {/* Toggle (nicht full width anklickbar) */}
-        <Box sx={{ display: "inline-flex", alignItems: "center" }}>
-          <FormControlLabel
-            sx={{ m: 0 }} // verhindert riesige Klickfläche über die ganze Zeile
-            control={
-              <Switch
-                checked={showTimers}
-                onChange={(e) => setShowTimers(e.target.checked)}
-              />
-            }
-            label="Wasser-Timer anzeigen"
-          />
-        </Box>
-
-        {error && (
-          <Typography color="error" variant="body2">
-            {error}
+      <Container maxWidth="md">
+        <Stack spacing={2} sx={{ py: 3 }}>
+          <Typography variant="h4" gutterBottom>
+            {t("dashboard.title")}
           </Typography>
-        )}
 
-        {totalTodos === 0 && !error && (
-          <Typography variant="body1">
-            {t("dashboard.noTodos", "Keine To-Dos vorhanden.")}
-          </Typography>
-        )}
+          {/* Toggle */}
+          <Box sx={{ display: "inline-flex", alignItems: "center" }}>
+            <FormControlLabel
+                sx={{ m: 0 }}
+                control={
+                  <Switch
+                      checked={showTimers}
+                      onChange={(e) => setShowTimers(e.target.checked)}
+                  />
+                }
+                label={t("dashboard.showTimer")}
+            />
+          </Box>
 
-        {/* Pflanzenweise anzeigen */}
-        {plantsWithTodos.map((plant) => (
-          <Card key={plant._id}>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 1 }}>
-                {plant.name}
+          {error && (
+              <Typography color="error" variant="body2">
+                {error}
               </Typography>
+          )}
 
-              <Stack spacing={1}>
-                {plant.todos.map((todo, idx) => {
-                  const nextDueAt = getNextDueAt(todo);
-                  const hasTimer = !!nextDueAt;
-                  const remainingMs = hasTimer ? nextDueAt.getTime() - now : null;
+          {totalTodos === 0 && !error && (
+              <Typography variant="body1">
+                {t("dashboard.noTodos")}
+              </Typography>
+          )}
 
-                  return (
-                    <Box key={`${plant._id}-${idx}`}>
-                      <FormControlLabel
-                        control={<Checkbox checked={!!todo.done} />}
-                        label={
-                          <Typography variant="body1">
-                            {todo.task}
-                          </Typography>
-                        }
-                      />
+          {/* Pflanzenweise anzeigen */}
+          {plantsWithTodos.map((plant) => (
+              <Card key={plant._id}>
+                <CardContent>
+                  <Typography variant="h6" sx={{ mb: 1 }}>
+                    {plant.name}
+                  </Typography>
 
-                      {showTimers && (
-                        <Typography variant="body2" sx={{ ml: 4 }} color="green">
-                          {hasTimer ? `⏳ ${formatRemaining(remainingMs)}` : "⏳ -"}
-                        </Typography>
-                      )}
+                  <Stack spacing={1}>
+                    {plant.todos.map((todo, idx) => {
+                      const nextDueAt = getNextDueAt(todo);
+                      const hasTimer = !!nextDueAt;
+                      const remainingMs = hasTimer
+                          ? nextDueAt.getTime() - now
+                          : null;
 
-                      {idx < plant.todos.length - 1 && <Divider sx={{ mt: 1 }} />}
-                    </Box>
-                  );
-                })}
-              </Stack>
-            </CardContent>
-          </Card>
-        ))}
-      </Stack>
-    </Container>
+                      return (
+                          <Box key={`${plant._id}-${idx}`}>
+                            <FormControlLabel
+                                control={<Checkbox checked={!!todo.done} />}
+                                label={
+                                  <Typography variant="body1">
+                                    {todo.task}
+                                  </Typography>
+                                }
+                            />
+
+                            {showTimers && (
+                                <Typography
+                                    variant="body2"
+                                    sx={{ ml: 4 }}
+                                    color="green"
+                                >
+                                  {hasTimer
+                                      ? `⏳ ${formatRemaining(remainingMs)}`
+                                      : "⏳ -"}
+                                </Typography>
+                            )}
+
+                            {idx < plant.todos.length - 1 && (
+                                <Divider sx={{ mt: 1 }} />
+                            )}
+                          </Box>
+                      );
+                    })}
+                  </Stack>
+                </CardContent>
+              </Card>
+          ))}
+        </Stack>
+      </Container>
   );
 }

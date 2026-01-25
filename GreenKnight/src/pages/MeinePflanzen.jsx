@@ -17,10 +17,11 @@ import {
   Container,
   MenuItem,
 } from "@mui/material";
-
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 
 export default function MeinePflanzen() {
+  const { t } = useTranslation();
   const { accessToken } = useAuth();
 
   const [plants, setPlants] = useState([]);
@@ -34,7 +35,7 @@ export default function MeinePflanzen() {
   const [addOpen, setAddOpen] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
 
-  // Neu: Interval Inputs pro Pflanze
+  // Interval Inputs pro Pflanze
   const [todoEvery, setTodoEvery] = useState({});
   const [todoUnit, setTodoUnit] = useState({});
 
@@ -104,11 +105,7 @@ export default function MeinePflanzen() {
 
       if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
 
-      setNewPlantName("");
-      setDescription("");
-      setNewPlantImage(null);
-      setImagePreviewUrl(null);
-
+      resetAddForm();
       await loadPlants();
       setError(null);
 
@@ -212,251 +209,263 @@ export default function MeinePflanzen() {
   };
 
   return (
-    <Container maxWidth="md">
-      <Stack spacing={2} sx={{ py: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          Meine Pflanzen
-        </Typography>
-
-        {error && (
-          <Typography color="error" variant="body2">
-            {error}
+      <Container maxWidth="md">
+        <Stack spacing={2} sx={{ py: 3 }}>
+          <Typography variant="h4" gutterBottom>
+            {t("plants.title")}
           </Typography>
-        )}
 
-        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-          <Button
-            variant="contained"
-            onClick={() => {
-              resetAddForm();
-              setAddOpen(true);
-            }}
-          >
-            Hinzufügen
-          </Button>
-        </Stack>
+          {error && (
+              <Typography color="error" variant="body2">
+                {error}
+              </Typography>
+          )}
 
-        <Dialog
-          open={addOpen}
-          onClose={() => {
-            resetAddForm();
-            setAddOpen(false);
-          }}
-          fullWidth
-          maxWidth="sm"
-        >
-          <DialogTitle>Neue Pflanze hinzufügen</DialogTitle>
-
-          <DialogContent sx={{ pt: 1 }}>
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              <TextField
-                label="Name"
-                value={newPlantName}
-                onChange={(e) => setNewPlantName(e.target.value)}
-                autoFocus
-                fullWidth
-              />
-
-              <TextField
-                label="Beschreibung"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                multiline
-                rows={3}
-                fullWidth
-              />
-
-              <Button variant="outlined" component="label">
-                Bild wählen
-                <input
-                  type="file"
-                  hidden
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] ?? null;
-                    setNewPlantImage(file);
-
-                    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-                    setImagePreviewUrl(file ? URL.createObjectURL(file) : null);
-                  }}
-                />
-              </Button>
-
-              {newPlantImage && (
-                <Typography variant="body2" color="text.secondary">
-                  Ausgewählt: {newPlantImage.name}
-                </Typography>
-              )}
-
-              {imagePreviewUrl && (
-                <Box sx={{ mt: 1 }}>
-                  <img
-                    src={imagePreviewUrl}
-                    alt="Vorschau"
-                    style={{
-                      width: "100%",
-                      maxHeight: 220,
-                      objectFit: "cover",
-                      borderRadius: 8,
-                    }}
-                  />
-                </Box>
-              )}
-            </Stack>
-          </DialogContent>
-
-          <DialogActions>
+          <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
             <Button
-              onClick={() => {
-                if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-                setImagePreviewUrl(null);
+                variant="contained"
+                onClick={() => {
+                  resetAddForm();
+                  setAddOpen(true);
+                }}
+            >
+              {t("plants.add")}
+            </Button>
+          </Stack>
+
+          {/* Add Plant Dialog */}
+          <Dialog
+              open={addOpen}
+              onClose={() => {
+                resetAddForm();
                 setAddOpen(false);
               }}
-            >
-              Abbrechen
-            </Button>
+              fullWidth
+              maxWidth="sm"
+          >
+            <DialogTitle>{t("plants.addDialog.title")}</DialogTitle>
 
-            <Button
-              variant="contained"
-              onClick={async () => {
-                const success = await handleAddPlant();
-                if (success) setAddOpen(false);
-              }}
-              disabled={!newPlantName.trim()}
-            >
-              Speichern
-            </Button>
-          </DialogActions>
-        </Dialog>
+            <DialogContent sx={{ pt: 1 }}>
+              <Stack spacing={2} sx={{ mt: 1 }}>
+                <TextField
+                    label={t("plants.addDialog.name")}
+                    value={newPlantName}
+                    onChange={(e) => setNewPlantName(e.target.value)}
+                    autoFocus
+                    fullWidth
+                />
 
-        {plants.map((plant) => (
-          <Card key={plant._id}>
-            <CardContent>
-              <Stack
-                direction="row"
-                justifyContent="space-between"
-                alignItems="center"
-              >
-                <Typography variant="h6">{plant.name}</Typography>
+                <TextField
+                    label={t("plants.addDialog.description")}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    multiline
+                    rows={3}
+                    fullWidth
+                />
 
-                <Button
-                  variant="outlined"
-                  color="error"
-                  onClick={() => handleDeletePlant(plant._id)}
-                >
-                  Löschen
-                </Button>
-              </Stack>
+                <Button variant="outlined" component="label">
+                  {t("plants.addDialog.chooseImage")}
+                  <input
+                      type="file"
+                      hidden
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        setNewPlantImage(file);
 
-              {plant.description && (
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 1 }}
-                >
-                  {plant.description}
-                </Typography>
-              )}
-
-              {plant.imageUrl && (
-                <Box sx={{ mt: 2 }}>
-                  <img
-                    src={plant.imageUrl}
-                    alt={plant.name}
-                    style={{ maxWidth: "100%", borderRadius: 8 }}
+                        if (imagePreviewUrl)
+                          URL.revokeObjectURL(imagePreviewUrl);
+                        setImagePreviewUrl(
+                            file ? URL.createObjectURL(file) : null
+                        );
+                      }}
                   />
-                </Box>
-              )}
+                </Button>
 
-              <Stack spacing={1} sx={{ mt: 2 }}>
-                {(plant.todos || []).map((todo, index) => (
+                {newPlantImage && (
+                    <Typography variant="body2" color="text.secondary">
+                      {t("plants.addDialog.selectedImage")}:{" "}
+                      {newPlantImage.name}
+                    </Typography>
+                )}
+
+                {imagePreviewUrl && (
+                    <Box sx={{ mt: 1 }}>
+                      <img
+                          src={imagePreviewUrl}
+                          alt={t("plants.addDialog.selectedImage")}
+                          style={{
+                            width: "100%",
+                            maxHeight: 220,
+                            objectFit: "cover",
+                            borderRadius: 8,
+                          }}
+                      />
+                    </Box>
+                )}
+              </Stack>
+            </DialogContent>
+
+            <DialogActions>
+              <Button
+                  onClick={() => {
+                    if (imagePreviewUrl)
+                      URL.revokeObjectURL(imagePreviewUrl);
+                    setImagePreviewUrl(null);
+                    setAddOpen(false);
+                  }}
+              >
+                {t("plants.cancel")}
+              </Button>
+
+              <Button
+                  variant="contained"
+                  onClick={async () => {
+                    const success = await handleAddPlant();
+                    if (success) setAddOpen(false);
+                  }}
+                  disabled={!newPlantName.trim()}
+              >
+                {t("plants.save")}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {plants.map((plant) => (
+              <Card key={plant._id}>
+                <CardContent>
                   <Stack
-                    key={index}
-                    direction="row"
-                    alignItems="center"
-                    justifyContent="space-between"
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
                   >
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={!!todo.done}
-                          onChange={(e) =>
-                            handleToggleTodo(
-                              plant._id,
-                              index,
-                              e.target.checked
-                            )
-                          }
-                        />
-                      }
-                      label={todo.task}
-                    />
+                    <Typography variant="h6">{plant.name}</Typography>
+
                     <Button
-                      size="small"
-                      color="error"
-                      onClick={() => handleDeleteTodo(plant._id, index)}
+                        variant="outlined"
+                        color="error"
+                        onClick={() => handleDeletePlant(plant._id)}
                     >
-                      X
+                      {t("plants.delete")}
                     </Button>
                   </Stack>
-                ))}
 
-                <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                  <TextField
-                    size="small"
-                    label="Neues To-Do"
-                    value={newTodos[plant._id] || ""}
-                    onChange={(e) =>
-                      setNewTodos((prev) => ({
-                        ...prev,
-                        [plant._id]: e.target.value,
-                      }))
-                    }
-                    fullWidth
-                  />
+                  {plant.description && (
+                      <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mt: 1 }}
+                      >
+                        {plant.description}
+                      </Typography>
+                  )}
 
-                  <TextField
-                    size="small"
-                    label="Wie oft?"
-                    value={todoEvery[plant._id] ?? 1}
-                    onChange={(e) =>
-                      setTodoEvery((prev) => ({
-                        ...prev,
-                        [plant._id]: e.target.value,
-                      }))
-                    }
-                    sx={{ width: 120 }}
-                  />
+                  {plant.imageUrl && (
+                      <Box sx={{ mt: 2 }}>
+                        <img
+                            src={plant.imageUrl}
+                            alt={plant.name}
+                            style={{ maxWidth: "100%", borderRadius: 8 }}
+                        />
+                      </Box>
+                  )}
 
-                  <TextField
-                    size="small"
-                    select
-                    label="Zeitraum"
-                    value={todoUnit[plant._id] ?? "day"}
-                    onChange={(e) =>
-                      setTodoUnit((prev) => ({
-                        ...prev,
-                        [plant._id]: e.target.value,
-                      }))
-                    }
-                    sx={{ width: 140 }}
-                  >
-                    <MenuItem value="day">Tag</MenuItem>
-                    <MenuItem value="month">Monat</MenuItem>
-                  </TextField>
+                  <Stack spacing={1} sx={{ mt: 2 }}>
+                    {(plant.todos || []).map((todo, index) => (
+                        <Stack
+                            key={index}
+                            direction="row"
+                            alignItems="center"
+                            justifyContent="space-between"
+                        >
+                          <FormControlLabel
+                              control={
+                                <Checkbox
+                                    checked={!!todo.done}
+                                    onChange={(e) =>
+                                        handleToggleTodo(
+                                            plant._id,
+                                            index,
+                                            e.target.checked
+                                        )
+                                    }
+                                />
+                              }
+                              label={todo.task}
+                          />
+                          <Button
+                              size="small"
+                              color="error"
+                              onClick={() =>
+                                  handleDeleteTodo(plant._id, index)
+                              }
+                          >
+                            X
+                          </Button>
+                        </Stack>
+                    ))}
 
-                  <Button
-                    variant="contained"
-                    onClick={() => handleAddTodo(plant._id)}
-                  >
-                    ➕
-                  </Button>
-                </Stack>
-              </Stack>
-            </CardContent>
-          </Card>
-        ))}
-      </Stack>
-    </Container>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                      <TextField
+                          size="small"
+                          label={t("plants.todos.new")}
+                          value={newTodos[plant._id] || ""}
+                          onChange={(e) =>
+                              setNewTodos((prev) => ({
+                                ...prev,
+                                [plant._id]: e.target.value,
+                              }))
+                          }
+                          fullWidth
+                      />
+
+                      <TextField
+                          size="small"
+                          label={t("plants.todos.every")}
+                          value={todoEvery[plant._id] ?? 1}
+                          onChange={(e) =>
+                              setTodoEvery((prev) => ({
+                                ...prev,
+                                [plant._id]: e.target.value,
+                              }))
+                          }
+                          sx={{ width: 120 }}
+                      />
+
+                      <TextField
+                          size="small"
+                          select
+                          label={t("plants.todos.unit")}
+                          value={todoUnit[plant._id] ?? "day"}
+                          onChange={(e) =>
+                              setTodoUnit((prev) => ({
+                                ...prev,
+                                [plant._id]: e.target.value,
+                              }))
+                          }
+                          sx={{ width: 140 }}
+                      >
+                        <MenuItem value="day">
+                          {t("plants.todos.day")}
+                        </MenuItem>
+                        <MenuItem value="month">
+                          {t("plants.todos.month")}
+                        </MenuItem>
+                      </TextField>
+
+                      <Button
+                          variant="contained"
+                          onClick={() => handleAddTodo(plant._id)}
+                      >
+                        ➕
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </CardContent>
+              </Card>
+          ))}
+        </Stack>
+      </Container>
   );
 }

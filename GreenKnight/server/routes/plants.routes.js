@@ -31,11 +31,15 @@ const upload = multer({ storage });
 /* ---------- Auth erforderlich ---------- */
 router.use(authenticateToken);
 
-/* ---------- Alle Pflanzen ---------- */
+/* ---------- Alle Pflanzen (NUR eigene) ---------- */
 router.get("/", async (req, res) => {
     try {
         const db = req.app.get("db");
-        const plants = await db.collection("plants").find({}).toArray();
+        const plants = await db
+            .collection("plants")
+            .find({ userId: req.user.id }) // 🔒 User-Filter
+            .toArray();
+
         res.json(plants);
     } catch (err) {
         console.error(err);
@@ -43,13 +47,14 @@ router.get("/", async (req, res) => {
     }
 });
 
-/* ---------- Einzelne Pflanze ---------- */
+/* ---------- Einzelne Pflanze (NUR eigene) ---------- */
 router.get("/:id", async (req, res) => {
     try {
         const db = req.app.get("db");
-        const plant = await db
-            .collection("plants")
-            .findOne({ _id: new ObjectId(req.params.id) });
+        const plant = await db.collection("plants").findOne({
+            _id: new ObjectId(req.params.id),
+            userId: req.user.id,
+        });
 
         if (!plant) return res.status(404).send("Pflanze nicht gefunden");
         res.json(plant);
@@ -77,13 +82,15 @@ router.post("/", upload.single("image"), async (req, res) => {
             description: description || "",
             todos: [],
             imageUrl,
+            userId: req.user.id, // 🔑 User-Zuordnung
             createdAt: new Date(),
         };
 
         const result = await db.collection("plants").insertOne(plant);
-        const inserted = await db
-            .collection("plants")
-            .findOne({ _id: result.insertedId });
+        const inserted = await db.collection("plants").findOne({
+            _id: result.insertedId,
+            userId: req.user.id,
+        });
 
         res.status(201).json(inserted);
     } catch (err) {
@@ -92,13 +99,14 @@ router.post("/", upload.single("image"), async (req, res) => {
     }
 });
 
-/* ---------- Pflanze löschen ---------- */
+/* ---------- Pflanze löschen (NUR eigene) ---------- */
 router.delete("/:id", async (req, res) => {
     try {
         const db = req.app.get("db");
-        const result = await db
-            .collection("plants")
-            .deleteOne({ _id: new ObjectId(req.params.id) });
+        const result = await db.collection("plants").deleteOne({
+            _id: new ObjectId(req.params.id),
+            userId: req.user.id,
+        });
 
         if (result.deletedCount === 0) {
             return res.status(404).send("Pflanze nicht gefunden");
@@ -141,7 +149,7 @@ router.post("/:id/todos", async (req, res) => {
         };
 
         const result = await db.collection("plants").updateOne(
-            { _id: plantId },
+            { _id: plantId, userId: req.user.id }, // 🔒
             { $push: { todos: todo } }
         );
 
@@ -149,9 +157,10 @@ router.post("/:id/todos", async (req, res) => {
             return res.status(404).send("Pflanze nicht gefunden");
         }
 
-        const updated = await db
-            .collection("plants")
-            .findOne({ _id: plantId });
+        const updated = await db.collection("plants").findOne({
+            _id: plantId,
+            userId: req.user.id,
+        });
 
         res.status(201).json(updated);
     } catch (err) {
@@ -168,9 +177,12 @@ router.put("/:plantId/todos/:todoIndex", async (req, res) => {
         const todoIndex = parseInt(req.params.todoIndex, 10);
         const { done } = req.body;
 
-        const plant = await db.collection("plants").findOne({ _id: plantId });
-        if (!plant) return res.status(404).send("Pflanze nicht gefunden");
+        const plant = await db.collection("plants").findOne({
+            _id: plantId,
+            userId: req.user.id,
+        });
 
+        if (!plant) return res.status(404).send("Pflanze nicht gefunden");
         if (!plant.todos[todoIndex]) {
             return res.status(400).send("Ungültiger To-Do-Index");
         }
@@ -189,7 +201,7 @@ router.put("/:plantId/todos/:todoIndex", async (req, res) => {
         }
 
         await db.collection("plants").updateOne(
-            { _id: plantId },
+            { _id: plantId, userId: req.user.id },
             { $set: { todos: plant.todos } }
         );
 
@@ -207,13 +219,17 @@ router.delete("/:plantId/todos/:todoIndex", async (req, res) => {
         const plantId = new ObjectId(req.params.plantId);
         const todoIndex = parseInt(req.params.todoIndex, 10);
 
-        const plant = await db.collection("plants").findOne({ _id: plantId });
+        const plant = await db.collection("plants").findOne({
+            _id: plantId,
+            userId: req.user.id,
+        });
+
         if (!plant) return res.status(404).send("Pflanze nicht gefunden");
 
         plant.todos.splice(todoIndex, 1);
 
         await db.collection("plants").updateOne(
-            { _id: plantId },
+            { _id: plantId, userId: req.user.id },
             { $set: { todos: plant.todos } }
         );
 

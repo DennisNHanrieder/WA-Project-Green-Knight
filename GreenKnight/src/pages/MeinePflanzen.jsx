@@ -18,7 +18,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/useAuth";
 
 export default function MeinePflanzen() {
   const { t } = useTranslation();

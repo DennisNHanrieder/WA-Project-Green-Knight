@@ -11,7 +11,7 @@ import {
   Container,
 } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/useAuth";
 import { useTranslation } from "react-i18next";
 
 function formatDateTime(value, locale = "de-DE") {

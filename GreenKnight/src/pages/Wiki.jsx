@@ -14,7 +14,7 @@ import {
   Box,
   Container,
 } from "@mui/material";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import request from "supertest";
-import app from "../app.js";
+import app from "../server/app.js";
 
 function makeMockDb(overrides = {}) {
   const usersCollection = {

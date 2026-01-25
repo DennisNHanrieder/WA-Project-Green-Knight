@@ -29,10 +29,15 @@ function makeAccessToken({
   process.env.JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "test-access-secret";
 
   return jwt.sign(
-    { username, roles }, // Payload
-    process.env.JWT_ACCESS_SECRET,
-    { subject: sub, expiresIn: "15m" } 
+      {
+        sub,
+        username,
+        roles,
+      },
+      process.env.JWT_ACCESS_SECRET,
+      { expiresIn: "15m" }
   );
+
 }
 
 test("GET /api/plants -> 200 returns plants array (authorized)", async () => {

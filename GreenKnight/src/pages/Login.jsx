@@ -1,4 +1,3 @@
-// src/pages/Login.jsx
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
@@ -22,15 +21,19 @@ export default function Login() {
     e.preventDefault();
     setSubmitting(true);
     setLocalError(null);
+
     try {
       await login(form.username, form.password);
       navigate("/");
     } catch (err) {
+      // err.message ist ein i18n-KEY (z. B. "errors.invalidCredentials")
       setLocalError(err.message);
     } finally {
       setSubmitting(false);
     }
   };
+
+  const errorKey = localError || error;
 
   return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
@@ -61,9 +64,9 @@ export default function Login() {
                 autoComplete="current-password"
             />
 
-            {(localError || error) && (
+            {errorKey && (
                 <Typography color="error" variant="body2" sx={{ mt: 1 }}>
-                  {localError || error}
+                  {t(errorKey)}
                 </Typography>
             )}
 

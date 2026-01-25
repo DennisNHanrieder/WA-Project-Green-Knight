@@ -83,7 +83,13 @@
   },
 
   "errors": {
-    "unauthorized": "Unauthorized"
+    "invalidCredentials": "Username or password is incorrect.",
+    "unauthorized": "Unauthorized.",
+    "userExists": "This username is already taken.",
+    "loginFailed": "Login failed.",
+    "registrationFailed": "Registration failed.",
+    "network": "Network error. Please try again later.",
+    "unknown": "An unknown error occurred."
   },
 
   "layout": {

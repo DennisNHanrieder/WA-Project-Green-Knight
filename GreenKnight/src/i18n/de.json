@@ -83,7 +83,13 @@
   },
 
   "errors": {
-    "unauthorized": "Keine Berechtigung"
+    "invalidCredentials": "Benutzername oder Passwort ist falsch.",
+    "unauthorized": "Keine Berechtigung.",
+    "userExists": "Dieser Benutzername ist bereits vergeben.",
+    "loginFailed": "Login fehlgeschlagen.",
+    "registrationFailed": "Registrierung fehlgeschlagen.",
+    "network": "Netzwerkfehler. Bitte versuche es später erneut.",
+    "unknown": "Ein unbekannter Fehler ist aufgetreten."
   },
 
   "layout": {

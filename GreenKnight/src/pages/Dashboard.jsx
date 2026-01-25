@@ -25,7 +25,7 @@ export default function Dashboard() {
   // Live-Timer Toggle
   const [showTimers, setShowTimers] = useState(false);
 
-  // “Tick” für Live Timer (1x pro Sekunde)
+  // Tick für Live Timer
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!showTimers) return;
@@ -33,16 +33,14 @@ export default function Dashboard() {
     return () => clearInterval(id);
   }, [showTimers]);
 
-  // Daten abrufen
+  // Pflanzen + Todos laden
   useEffect(() => {
     if (!accessToken) return;
 
     const loadData = async () => {
       try {
         const res = await fetch("/api/plants", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
+          headers: { Authorization: `Bearer ${accessToken}` },
         });
 
         if (!res.ok) {
@@ -66,7 +64,38 @@ export default function Dashboard() {
     loadData();
   }, [accessToken]);
 
-  // Format Remaining helper
+  // Todo abhaken – GLEICH wie MeinePflanzen.jsx
+  const handleToggleTodo = async (plantId, index, done) => {
+    try {
+      const res = await fetch(
+          `/api/plants/${plantId}/todos/${index}`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ done }),
+          }
+      );
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Fehler ${res.status}`);
+      }
+
+      // Neu laden (wie bei Pflanzen-Seite)
+      const updated = await fetch("/api/plants", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setPlants(await updated.json());
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
+  };
+
+  // Zeitformat
   const formatRemaining = (ms) => {
     if (ms == null || ms <= 0) return "-";
     const totalMinutes = Math.floor(ms / 60000);
@@ -79,14 +108,11 @@ export default function Dashboard() {
     return `${minutes}m`;
   };
 
-  // (Optional) nextDueAt / fallback: computed
+  // nextDueAt berechnen (wie gehabt)
   const getNextDueAt = (todo) => {
     if (!todo) return null;
-
-    // 1) wenn Backend nextDueAt liefert:
     if (todo.nextDueAt) return new Date(todo.nextDueAt);
 
-    // 2) fallback: lastDoneAt / createdAt + interval
     const every = Number(todo.repeatEvery);
     const unit = todo.repeatUnit;
     if (!every || !(unit === "day" || unit === "month")) return null;
@@ -105,15 +131,9 @@ export default function Dashboard() {
     return d;
   };
 
-  // Gruppiert: alle Todos je Pflanze zusammen
+  // Nur Pflanzen mit Todos
   const plantsWithTodos = useMemo(() => {
-    return (Array.isArray(plants) ? plants : [])
-        .filter((p) => (p.todos || []).length > 0)
-        .map((p) => ({
-          _id: p._id,
-          name: p.name,
-          todos: p.todos || [],
-        }));
+    return plants.filter((p) => (p.todos || []).length > 0);
   }, [plants]);
 
   const totalTodos = plantsWithTodos.reduce(
@@ -124,23 +144,19 @@ export default function Dashboard() {
   return (
       <Container maxWidth="md">
         <Stack spacing={2} sx={{ py: 3 }}>
-          <Typography variant="h4" gutterBottom>
+          <Typography variant="h4">
             {t("dashboard.title")}
           </Typography>
 
-          {/* Toggle */}
-          <Box sx={{ display: "inline-flex", alignItems: "center" }}>
-            <FormControlLabel
-                sx={{ m: 0 }}
-                control={
-                  <Switch
-                      checked={showTimers}
-                      onChange={(e) => setShowTimers(e.target.checked)}
-                  />
-                }
-                label={t("dashboard.showTimer")}
-            />
-          </Box>
+          <FormControlLabel
+              control={
+                <Switch
+                    checked={showTimers}
+                    onChange={(e) => setShowTimers(e.target.checked)}
+                />
+              }
+              label={t("dashboard.showTimer")}
+          />
 
           {error && (
               <Typography color="error" variant="body2">
@@ -149,12 +165,9 @@ export default function Dashboard() {
           )}
 
           {totalTodos === 0 && !error && (
-              <Typography variant="body1">
-                {t("dashboard.noTodos")}
-              </Typography>
+              <Typography>{t("dashboard.noTodos")}</Typography>
           )}
 
-          {/* Pflanzenweise anzeigen */}
           {plantsWithTodos.map((plant) => (
               <Card key={plant._id}>
                 <CardContent>
@@ -163,19 +176,38 @@ export default function Dashboard() {
                   </Typography>
 
                   <Stack spacing={1}>
-                    {plant.todos.map((todo, idx) => {
+                    {(plant.todos || []).map((todo, index) => {
                       const nextDueAt = getNextDueAt(todo);
-                      const hasTimer = !!nextDueAt;
-                      const remainingMs = hasTimer
+                      const remainingMs = nextDueAt
                           ? nextDueAt.getTime() - now
                           : null;
 
                       return (
-                          <Box key={`${plant._id}-${idx}`}>
+                          <Box key={`${plant._id}-${index}`}>
                             <FormControlLabel
-                                control={<Checkbox checked={!!todo.done} />}
+                                control={
+                                  <Checkbox
+                                      checked={!!todo.done}
+                                      onChange={(e) =>
+                                          handleToggleTodo(
+                                              plant._id,
+                                              index,
+                                              e.target.checked
+                                          )
+                                      }
+                                  />
+                                }
                                 label={
-                                  <Typography variant="body1">
+                                  <Typography
+                                      sx={{
+                                        textDecoration: todo.done
+                                            ? "line-through"
+                                            : "none",
+                                        color: todo.done
+                                            ? "text.secondary"
+                                            : "text.primary",
+                                      }}
+                                  >
                                     {todo.task}
                                   </Typography>
                                 }
@@ -187,13 +219,11 @@ export default function Dashboard() {
                                     sx={{ ml: 4 }}
                                     color="green"
                                 >
-                                  {hasTimer
-                                      ? `⏳ ${formatRemaining(remainingMs)}`
-                                      : "⏳ -"}
+                                  ⏳ {formatRemaining(remainingMs)}
                                 </Typography>
                             )}
 
-                            {idx < plant.todos.length - 1 && (
+                            {index < plant.todos.length - 1 && (
                                 <Divider sx={{ mt: 1 }} />
                             )}
                           </Box>

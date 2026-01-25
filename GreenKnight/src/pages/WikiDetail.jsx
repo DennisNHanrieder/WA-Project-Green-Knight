@@ -12,12 +12,13 @@ import {
 } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useTranslation } from "react-i18next";
 
-function formatDateTime(value) {
+function formatDateTime(value, locale = "de-DE") {
   if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("de-DE", {
+  return d.toLocaleString(locale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -27,6 +28,7 @@ function formatDateTime(value) {
 }
 
 export default function WikiDetail() {
+  const { t, i18n } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { accessToken } = useAuth();
@@ -52,7 +54,10 @@ export default function WikiDetail() {
 
       const data = await res.json();
       setEntry(data);
-      setEditData({ title: data.title || "", content: data.content || "" });
+      setEditData({
+        title: data.title || "",
+        content: data.content || "",
+      });
       setError(null);
     } catch (err) {
       console.error(err);
@@ -116,123 +121,142 @@ export default function WikiDetail() {
   const imageSrc = entry?.thumbnailUrl || entry?.imageUrl || null;
 
   return (
-    <Container maxWidth="md">
-      <Stack spacing={2} sx={{ py: 3 }}>
-        <Button variant="outlined" onClick={() => navigate("/wiki")}>
-          ← Zurück
-        </Button>
+      <Container maxWidth="md">
+        <Stack spacing={2} sx={{ py: 3 }}>
+          <Button variant="outlined" onClick={() => navigate("/wiki")}>
+            ← {t("wiki.back")}
+          </Button>
 
-        {error && (
-          <Typography color="error" variant="body2">
-            {error}
-          </Typography>
-        )}
+          {error && (
+              <Typography color="error" variant="body2">
+                {error}
+              </Typography>
+          )}
 
-        {!entry && !error && <Typography>Lade…</Typography>}
+          {!entry && !error && (
+              <Typography>{t("wiki.loading")}</Typography>
+          )}
 
-        {entry && (
-          <Card>
-            <CardContent>
-              {editing ? (
-                <Stack spacing={2}>
-                  <TextField
-                    label="Titel"
-                    value={editData.title}
-                    onChange={(e) =>
-                      setEditData((prev) => ({
-                        ...prev,
-                        title: e.target.value,
-                      }))
-                    }
-                    fullWidth
-                  />
-                  <TextField
-                    label="Inhalt"
-                    value={editData.content}
-                    onChange={(e) =>
-                      setEditData((prev) => ({
-                        ...prev,
-                        content: e.target.value,
-                      }))
-                    }
-                    multiline
-                    minRows={6}
-                    fullWidth
-                  />
+          {entry && (
+              <Card>
+                <CardContent>
+                  {editing ? (
+                      <Stack spacing={2}>
+                        <TextField
+                            label={t("wiki.addDialog.titleLabel")}
+                            value={editData.title}
+                            onChange={(e) =>
+                                setEditData((prev) => ({
+                                  ...prev,
+                                  title: e.target.value,
+                                }))
+                            }
+                            fullWidth
+                        />
 
-                  <Stack direction="row" spacing={1}>
-                    <Button variant="contained" onClick={handleSave}>
-                      Speichern
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={() => {
-                        setEditing(false);
-                        setEditData({
-                          title: entry.title || "",
-                          content: entry.content || "",
-                        });
-                      }}
-                    >
-                      Abbrechen
-                    </Button>
-                  </Stack>
-                </Stack>
-              ) : (
-                <>
-                  <Typography variant="h4" sx={{ mb: 0.5 }}>
-                    {entry.title}
-                  </Typography>
+                        <TextField
+                            label={t("wiki.addDialog.contentLabel")}
+                            value={editData.content}
+                            onChange={(e) =>
+                                setEditData((prev) => ({
+                                  ...prev,
+                                  content: e.target.value,
+                                }))
+                            }
+                            multiline
+                            minRows={6}
+                            fullWidth
+                        />
 
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Erstellt von <b>{entry.createdBy || "Unbekannt"}</b> •{" "}
-                    {formatDateTime(entry.createdAt)} • zuletzt geändert von{" "}
-                    <b>{entry.updatedBy || "—"}</b> •{" "}
-                    {formatDateTime(entry.updatedAt)}
-                  </Typography>
+                        <Stack direction="row" spacing={1}>
+                          <Button variant="contained" onClick={handleSave}>
+                            {t("wiki.save")}
+                          </Button>
+                          <Button
+                              variant="outlined"
+                              onClick={() => {
+                                setEditing(false);
+                                setEditData({
+                                  title: entry.title || "",
+                                  content: entry.content || "",
+                                });
+                              }}
+                          >
+                            {t("wiki.cancel")}
+                          </Button>
+                        </Stack>
+                      </Stack>
+                  ) : (
+                      <>
+                        <Typography variant="h4" sx={{ mb: 0.5 }}>
+                          {entry.title}
+                        </Typography>
 
-                  {imageSrc && (
-                    <Box
-                      sx={{
-                        width: "100%",
-                        borderRadius: 2,
-                        overflow: "hidden",
-                        mb: 2,
-                        border: "1px solid rgba(0,0,0,0.08)",
-                      }}
-                    >
-                      <img
-                        src={imageSrc}
-                        alt={entry.title}
-                        style={{
-                          display: "block",
-                          width: "100%",
-                          maxHeight: 520,
-                          objectFit: "contain",
-                          background: "#f6f6f6",
-                        }}
-                      />
-                    </Box>
+                        <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ mb: 2 }}
+                        >
+                          {t("wiki.meta.createdBy")}{" "}
+                          <b>{entry.createdBy || t("wiki.meta.unknown")}</b> •{" "}
+                          {formatDateTime(entry.createdAt, i18n.language)} •{" "}
+                          {t("wiki.meta.updatedBy")}{" "}
+                          <b>{entry.updatedBy || "—"}</b> •{" "}
+                          {formatDateTime(entry.updatedAt, i18n.language)}
+                        </Typography>
+
+                        {imageSrc && (
+                            <Box
+                                sx={{
+                                  width: "100%",
+                                  borderRadius: 2,
+                                  overflow: "hidden",
+                                  mb: 2,
+                                  border: "1px solid rgba(0,0,0,0.08)",
+                                }}
+                            >
+                              <img
+                                  src={imageSrc}
+                                  alt={entry.title}
+                                  style={{
+                                    display: "block",
+                                    width: "100%",
+                                    maxHeight: 520,
+                                    objectFit: "contain",
+                                    background: "#f6f6f6",
+                                  }}
+                              />
+                            </Box>
+                        )}
+
+                        <Typography
+                            variant="body1"
+                            sx={{ whiteSpace: "pre-wrap" }}
+                        >
+                          {entry.content}
+                        </Typography>
+
+                        <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                          <Button
+                              variant="outlined"
+                              onClick={() => setEditing(true)}
+                          >
+                            {t("wiki.edit")}
+                          </Button>
+                          <Button
+                              variant="outlined"
+                              color="error"
+                              onClick={handleDelete}
+                          >
+                            ❌ {t("wiki.delete")}
+                          </Button>
+                        </Stack>
+                      </>
                   )}
-
-                  <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
-                    {entry.content}
-                  </Typography>
-
-                  <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                    <Button variant="outlined" onClick={() => setEditing(true)}>
-                      Bearbeiten
-                    </Button>
-                    <Button variant="outlined" color="error" onClick={handleDelete}>
-                      ❌ Löschen
-                    </Button>
-                  </Stack>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </Stack>
-    </Container>
+                </CardContent>
+              </Card>
+          )}
+        </Stack>
+      </Container>
   );
 }

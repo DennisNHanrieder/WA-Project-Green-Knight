@@ -5,16 +5,90 @@
     "myPlants": "Meine Pflanzen",
     "wiki": "Wiki"
   },
+
   "dashboard": {
     "title": "📅 Deine heutigen To-Dos",
-    "subtitle": "Hier siehst du alle Aufgaben für heute."
+    "subtitle": "Hier siehst du alle Aufgaben für heute.",
+    "noTodos": "Keine To-Dos vorhanden.",
+    "showTimer": "Wasser-Timer anzeigen"
   },
+
+  "login": {
+    "title": "Login",
+    "username": "Username",
+    "password": "Passwort",
+    "submit": "Login",
+    "noAccount": "Noch kein Account?",
+    "register": "Registrieren"
+  },
+
+  "register": {
+    "title": "Registrieren",
+    "username": "Username",
+    "email": "E-Mail (optional)",
+    "password": "Passwort",
+    "submit": "Registrieren",
+    "hasAccount": "Schon einen Account?",
+    "login": "Zum Login"
+  },
+
   "plants": {
-    "title": "🌱 Deine Pflanzen",
-    "subtitle": "Pflege deine Pflanzen und füge neue hinzu."
+    "title": "Meine Pflanzen",
+    "add": "Hinzufügen",
+    "delete": "Löschen",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+
+    "addDialog": {
+      "title": "Neue Pflanze hinzufügen",
+      "name": "Name",
+      "description": "Beschreibung",
+      "chooseImage": "Bild wählen",
+      "selectedImage": "Ausgewählt"
+    },
+
+    "todos": {
+      "new": "Neues To-Do",
+      "every": "Wie oft?",
+      "unit": "Zeitraum",
+      "day": "Tag",
+      "month": "Monat"
+    }
   },
+
   "wiki": {
-    "title": "📖 Pflanzen-Wiki",
-    "subtitle": "Hier findest du Informationen zu Pflanzenpflege, Licht & Gießen."
+    "title": "Wiki",
+    "add": "Hinzufügen",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "back": "Zurück",
+
+    "addDialog": {
+      "title": "Neuen Wiki-Eintrag hinzufügen",
+      "titleLabel": "Titel",
+      "contentLabel": "Inhalt",
+      "chooseThumbnail": "Thumbnail wählen",
+      "selected": "Ausgewählt"
+    },
+
+    "meta": {
+      "createdBy": "Erstellt von",
+      "updatedBy": "zuletzt geändert von",
+      "unknown": "Unbekannt"
+    },
+
+    "loading": "Lade…"
+  },
+
+  "errors": {
+    "unauthorized": "Keine Berechtigung"
+  },
+
+  "layout": {
+    "loggedInAs": "Eingeloggt als",
+    "logout": "Logout"
   }
+
 }

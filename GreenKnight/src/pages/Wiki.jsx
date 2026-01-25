@@ -16,12 +16,13 @@ import {
 } from "@mui/material";
 import { useAuth } from "../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
-function formatDateTime(value) {
+function formatDateTime(value, locale = "de-DE") {
   if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("de-DE", {
+  return d.toLocaleString(locale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -31,6 +32,7 @@ function formatDateTime(value) {
 }
 
 export default function Wiki() {
+  const { t, i18n } = useTranslation();
   const { accessToken } = useAuth();
   const navigate = useNavigate();
 
@@ -56,7 +58,6 @@ export default function Wiki() {
 
   const resetAddForm = () => {
     setNewEntry({ title: "", content: "" });
-
     if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
     setThumbnail(null);
     setThumbnailPreview(null);
@@ -168,245 +169,266 @@ export default function Wiki() {
   };
 
   return (
-    <Container maxWidth="md">
-      <Stack spacing={2} sx={{ py: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          Wiki
-        </Typography>
-
-        {error && (
-          <Typography color="error" variant="body2">
-            {error}
+      <Container maxWidth="md">
+        <Stack spacing={2} sx={{ py: 3 }}>
+          <Typography variant="h4" gutterBottom>
+            {t("wiki.title")}
           </Typography>
-        )}
 
-        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-          <Button
-            variant="contained"
-            onClick={() => {
-              resetAddForm();
-              setAddOpen(true);
-            }}
-          >
-            Hinzufügen
-          </Button>
-        </Stack>
+          {error && (
+              <Typography color="error" variant="body2">
+                {error}
+              </Typography>
+          )}
 
-        {/* Add Dialog */}
-        <Dialog
-          open={addOpen}
-          onClose={() => {
-            resetAddForm();
-            setAddOpen(false);
-          }}
-          fullWidth
-          maxWidth="sm"
-        >
-          <DialogTitle>Neuen Wiki-Eintrag hinzufügen</DialogTitle>
-
-          <DialogContent sx={{ pt: 1 }}>
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              <TextField
-                label="Titel"
-                value={newEntry.title}
-                onChange={(e) =>
-                  setNewEntry((prev) => ({ ...prev, title: e.target.value }))
-                }
-                autoFocus
-                fullWidth
-              />
-
-              <TextField
-                label="Inhalt"
-                multiline
-                minRows={6}
-                value={newEntry.content}
-                onChange={(e) =>
-                  setNewEntry((prev) => ({ ...prev, content: e.target.value }))
-                }
-                fullWidth
-              />
-
-              <Button variant="outlined" component="label">
-                Thumbnail wählen
-                <input
-                  type="file"
-                  hidden
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) {
-                      if (thumbnailPreview)
-                        URL.revokeObjectURL(thumbnailPreview);
-                      setThumbnail(null);
-                      setThumbnailPreview(null);
-                      return;
-                    }
-
-                    if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
-
-                    setThumbnail(file);
-                    setThumbnailPreview(URL.createObjectURL(file));
-                  }}
-                />
-              </Button>
-
-              {thumbnail && (
-                <Typography variant="body2" color="text.secondary">
-                  Ausgewählt: {thumbnail.name}
-                </Typography>
-              )}
-
-              {thumbnailPreview && (
-                <Box sx={{ mt: 1 }}>
-                  <img
-                    src={thumbnailPreview}
-                    alt="Thumbnail Preview"
-                    style={{
-                      width: "100%",
-                      maxHeight: 220,
-                      objectFit: "cover",
-                      borderRadius: 8,
-                    }}
-                  />
-                </Box>
-              )}
-            </Stack>
-          </DialogContent>
-
-          <DialogActions>
+          <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
             <Button
-              onClick={() => {
+                variant="contained"
+                onClick={() => {
+                  resetAddForm();
+                  setAddOpen(true);
+                }}
+            >
+              {t("wiki.add")}
+            </Button>
+          </Stack>
+
+          {/* Add Dialog */}
+          <Dialog
+              open={addOpen}
+              onClose={() => {
                 resetAddForm();
                 setAddOpen(false);
               }}
-            >
-              Abbrechen
-            </Button>
-
-            <Button
-              variant="contained"
-              disabled={!newEntry.title.trim() || !newEntry.content.trim()}
-              onClick={handleCreate}
-            >
-              Speichern
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Entries */}
-        {entries.map((entry) => (
-          <Card
-            key={entry._id}
-            sx={{ cursor: "pointer" }}
-            onClick={() => navigate(`/wiki/${entry._id}`)}
+              fullWidth
+              maxWidth="sm"
           >
-            <CardContent>
-              {editing === entry._id ? (
-                <Stack spacing={1} onClick={(e) => e.stopPropagation()}>
-                  <TextField
-                    label="Titel"
-                    value={editData.title}
+            <DialogTitle>{t("wiki.addDialog.title")}</DialogTitle>
+
+            <DialogContent sx={{ pt: 1 }}>
+              <Stack spacing={2} sx={{ mt: 1 }}>
+                <TextField
+                    label={t("wiki.addDialog.titleLabel")}
+                    value={newEntry.title}
                     onChange={(e) =>
-                      setEditData((prev) => ({
-                        ...prev,
-                        title: e.target.value,
-                      }))
+                        setNewEntry((prev) => ({
+                          ...prev,
+                          title: e.target.value,
+                        }))
                     }
-                  />
-                  <TextField
-                    label="Inhalt"
+                    autoFocus
+                    fullWidth
+                />
+
+                <TextField
+                    label={t("wiki.addDialog.contentLabel")}
                     multiline
-                    minRows={3}
-                    value={editData.content}
+                    minRows={6}
+                    value={newEntry.content}
                     onChange={(e) =>
-                      setEditData((prev) => ({
-                        ...prev,
-                        content: e.target.value,
-                      }))
+                        setNewEntry((prev) => ({
+                          ...prev,
+                          content: e.target.value,
+                        }))
                     }
+                    fullWidth
+                />
+
+                <Button variant="outlined" component="label">
+                  {t("wiki.addDialog.chooseThumbnail")}
+                  <input
+                      type="file"
+                      hidden
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) {
+                          if (thumbnailPreview)
+                            URL.revokeObjectURL(thumbnailPreview);
+                          setThumbnail(null);
+                          setThumbnailPreview(null);
+                          return;
+                        }
+
+                        if (thumbnailPreview)
+                          URL.revokeObjectURL(thumbnailPreview);
+
+                        setThumbnail(file);
+                        setThumbnailPreview(URL.createObjectURL(file));
+                      }}
                   />
-                  <Stack direction="row" spacing={1}>
-                    <Button
-                      variant="contained"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSaveEdit(entry._id);
-                      }}
-                    >
-                      Speichern
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditing(null);
-                        setEditData({ title: "", content: "" });
-                      }}
-                    >
-                      Abbrechen
-                    </Button>
-                  </Stack>
-                </Stack>
-              ) : (
-                <>
-                  <Typography variant="h6">{entry.title}</Typography>
+                </Button>
 
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    Erstellt von{" "}
-                    <b>{entry.createdBy || "Unbekannt"}</b> •{" "}
-                    {formatDateTime(entry.createdAt)} • zuletzt geändert von{" "}
-                    <b>{entry.updatedBy || "—"}</b> •{" "}
-                    {formatDateTime(entry.updatedAt)}
-                  </Typography>
+                {thumbnail && (
+                    <Typography variant="body2" color="text.secondary">
+                      {t("wiki.addDialog.selected")}: {thumbnail.name}
+                    </Typography>
+                )}
 
-                  <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
-                    {entry.content}
-                  </Typography>
-
-                  {(entry.thumbnailUrl || entry.imageUrl) && (
-                    <Box sx={{ mt: 1, mb: 1 }}>
+                {thumbnailPreview && (
+                    <Box sx={{ mt: 1 }}>
                       <img
-                        src={entry.thumbnailUrl || entry.imageUrl}
-                        alt={entry.title}
-                        style={{
-                          width: 180,
-                          height: 120,
-                          objectFit: "cover",
-                          borderRadius: 8,
-                        }}
-                        onClick={(e) => e.stopPropagation()}
+                          src={thumbnailPreview}
+                          alt={t("wiki.addDialog.selected")}
+                          style={{
+                            width: "100%",
+                            maxHeight: 220,
+                            objectFit: "cover",
+                            borderRadius: 8,
+                          }}
                       />
                     </Box>
-                  )}
+                )}
+              </Stack>
+            </DialogContent>
 
-                  <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                    <Button
-                      variant="outlined"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        startEdit(entry);
-                      }}
-                    >
-                      Bearbeiten
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(entry._id);
-                      }}
-                    >
-                      ❌ Löschen
-                    </Button>
-                  </Stack>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </Stack>
-    </Container>
+            <DialogActions>
+              <Button
+                  onClick={() => {
+                    resetAddForm();
+                    setAddOpen(false);
+                  }}
+              >
+                {t("wiki.cancel")}
+              </Button>
+
+              <Button
+                  variant="contained"
+                  disabled={!newEntry.title.trim() || !newEntry.content.trim()}
+                  onClick={handleCreate}
+              >
+                {t("wiki.save")}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Entries */}
+          {entries.map((entry) => (
+              <Card
+                  key={entry._id}
+                  sx={{ cursor: "pointer" }}
+                  onClick={() => navigate(`/wiki/${entry._id}`)}
+              >
+                <CardContent>
+                  {editing === entry._id ? (
+                      <Stack spacing={1} onClick={(e) => e.stopPropagation()}>
+                        <TextField
+                            label={t("wiki.addDialog.titleLabel")}
+                            value={editData.title}
+                            onChange={(e) =>
+                                setEditData((prev) => ({
+                                  ...prev,
+                                  title: e.target.value,
+                                }))
+                            }
+                        />
+                        <TextField
+                            label={t("wiki.addDialog.contentLabel")}
+                            multiline
+                            minRows={3}
+                            value={editData.content}
+                            onChange={(e) =>
+                                setEditData((prev) => ({
+                                  ...prev,
+                                  content: e.target.value,
+                                }))
+                            }
+                        />
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                              variant="contained"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSaveEdit(entry._id);
+                              }}
+                          >
+                            {t("wiki.save")}
+                          </Button>
+                          <Button
+                              variant="outlined"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditing(null);
+                                setEditData({ title: "", content: "" });
+                              }}
+                          >
+                            {t("wiki.cancel")}
+                          </Button>
+                        </Stack>
+                      </Stack>
+                  ) : (
+                      <>
+                        <Typography variant="h6">{entry.title}</Typography>
+
+                        <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ mb: 1 }}
+                        >
+                          {t("wiki.meta.createdBy")}{" "}
+                          <b>
+                            {entry.createdBy || t("wiki.meta.unknown")}
+                          </b>{" "}
+                          •{" "}
+                          {formatDateTime(entry.createdAt, i18n.language)} •{" "}
+                          {t("wiki.meta.updatedBy")}{" "}
+                          <b>
+                            {entry.updatedBy || "—"}
+                          </b>{" "}
+                          •{" "}
+                          {formatDateTime(entry.updatedAt, i18n.language)}
+                        </Typography>
+
+                        <Typography
+                            variant="body1"
+                            sx={{ whiteSpace: "pre-wrap" }}
+                        >
+                          {entry.content}
+                        </Typography>
+
+                        {(entry.thumbnailUrl || entry.imageUrl) && (
+                            <Box sx={{ mt: 1, mb: 1 }}>
+                              <img
+                                  src={entry.thumbnailUrl || entry.imageUrl}
+                                  alt={entry.title}
+                                  style={{
+                                    width: 180,
+                                    height: 120,
+                                    objectFit: "cover",
+                                    borderRadius: 8,
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                              />
+                            </Box>
+                        )}
+
+                        <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                          <Button
+                              variant="outlined"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEdit(entry);
+                              }}
+                          >
+                            {t("wiki.edit")}
+                          </Button>
+                          <Button
+                              variant="outlined"
+                              color="error"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(entry._id);
+                              }}
+                          >
+                            ❌ {t("wiki.delete")}
+                          </Button>
+                        </Stack>
+                      </>
+                  )}
+                </CardContent>
+              </Card>
+          ))}
+        </Stack>
+      </Container>
   );
 }

@@ -1,7 +1,7 @@
 // src/pages/Register.jsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/useAuth";
 import { Box, TextField, Button, Typography, Paper } from "@mui/material";
 import { useTranslation } from "react-i18next";
 

@@ -31,7 +31,7 @@ export default function WikiDetail() {
   const { t, i18n } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
 
   const [entry, setEntry] = useState(null);
   const [error, setError] = useState(null);
@@ -237,19 +237,30 @@ export default function WikiDetail() {
                         </Typography>
 
                         <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                          <Button
-                              variant="outlined"
-                              onClick={() => setEditing(true)}
-                          >
-                            {t("wiki.edit")}
-                          </Button>
-                          <Button
-                              variant="outlined"
-                              color="error"
-                              onClick={handleDelete}
-                          >
-                            ❌ {t("wiki.delete")}
-                          </Button>
+                          {entry.userId === user?.id && (
+                              <Button
+                                  variant="outlined"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startEdit(entry);
+                                  }}
+                              >
+                                {t("wiki.edit")}
+                              </Button>
+                          )}
+
+                          {entry.userId === user?.id && (
+                              <Button
+                                  variant="outlined"
+                                  color="error"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(entry._id);
+                                  }}
+                              >
+                                ❌ {t("wiki.delete")}
+                              </Button>
+                          )}
                         </Stack>
                       </>
                   )}

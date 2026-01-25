@@ -33,7 +33,7 @@ function formatDateTime(value, locale = "de-DE") {
 
 export default function Wiki() {
   const { t, i18n } = useTranslation();
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const navigate = useNavigate();
 
   const [entries, setEntries] = useState([]);
@@ -403,25 +403,31 @@ export default function Wiki() {
                         )}
 
                         <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                          <Button
-                              variant="outlined"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                startEdit(entry);
-                              }}
-                          >
-                            {t("wiki.edit")}
-                          </Button>
-                          <Button
-                              variant="outlined"
-                              color="error"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(entry._id);
-                              }}
-                          >
-                            ❌ {t("wiki.delete")}
-                          </Button>
+                          {entry.userId === user?.id && (
+                              <Button
+                                  variant="outlined"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startEdit(entry);
+                                  }}
+                              >
+                                {t("wiki.edit")}
+                              </Button>
+                          )}
+
+                          {entry.userId === user?.id && (
+                              <Button
+                                  variant="outlined"
+                                  color="error"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(entry._id);
+                                  }}
+                              >
+                                ❌ {t("wiki.delete")}
+                              </Button>
+                          )}
+
                         </Stack>
                       </>
                   )}

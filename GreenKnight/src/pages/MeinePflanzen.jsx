@@ -392,8 +392,22 @@ export default function MeinePflanzen() {
                                     }
                                 />
                               }
-                              label={todo.task}
+                              label={
+                                <Typography
+                                    sx={{
+                                      textDecoration: todo.done
+                                          ? "line-through"
+                                          : "none",
+                                      color: todo.done
+                                          ? "text.secondary"
+                                          : "text.primary",
+                                    }}
+                                >
+                                  {todo.task}
+                                </Typography>
+                              }
                           />
+
                           <Button
                               size="small"
                               color="error"
@@ -406,7 +420,11 @@ export default function MeinePflanzen() {
                         </Stack>
                     ))}
 
-                    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                    <Stack
+                        direction="row"
+                        spacing={1}
+                        sx={{ alignItems: "center" }}
+                    >
                       <TextField
                           size="small"
                           label={t("plants.todos.new")}

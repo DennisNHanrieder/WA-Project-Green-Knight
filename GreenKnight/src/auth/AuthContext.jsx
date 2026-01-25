@@ -2,6 +2,41 @@ import { useState, useEffect, useCallback } from "react";
 import { AuthContext } from "./AuthContext.context";
 import { parseJwt } from "./jwt.utils";
 
+/* ---------- ROBUST ERROR DETECTION ---------- */
+function resolveAuthError(res, data) {
+  // OAuth2 Standard
+  if (data?.error === "invalid_grant") {
+    return "errors.invalidCredentials";
+  }
+
+  // Häufige Backend-Patterns
+  if (
+      data?.message?.toLowerCase()?.includes("credential") ||
+      data?.message?.toLowerCase()?.includes("password")
+  ) {
+    return "errors.invalidCredentials";
+  }
+
+  // HTTP Status Fallback
+  if (res.status === 401 || res.status === 400) {
+    return "errors.invalidCredentials";
+  }
+
+  if (res.status === 403) {
+    return "errors.unauthorized";
+  }
+
+  if (res.status === 409) {
+    return "errors.userExists";
+  }
+
+  if (res.status >= 500) {
+    return "errors.network";
+  }
+
+  return "errors.unknown";
+}
+
 export function AuthProvider({ children }) {
   const [accessToken, setAccessToken] = useState(() =>
       localStorage.getItem("access_token")
@@ -12,6 +47,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     const token = localStorage.getItem("access_token");
     if (!token) return null;
+
     const payload = parseJwt(token);
     if (!payload) return null;
 
@@ -44,12 +80,17 @@ export function AuthProvider({ children }) {
         }),
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Login failed");
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null; // Backend hat evtl. Text/HTML geschickt
       }
 
-      const data = await res.json();
+      if (!res.ok || data?.error) {
+        const errorKey = resolveAuthError(res, data);
+        throw new Error(errorKey);
+      }
 
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("refresh_token", data.refresh_token);
@@ -65,8 +106,8 @@ export function AuthProvider({ children }) {
         exp: payload.exp,
       });
     } catch (err) {
-      console.error(err);
-      setError(err.message);
+      console.error("Login error resolved as:", err.message);
+      setError(err.message || "errors.loginFailed");
       throw err;
     } finally {
       setLoading(false);
@@ -94,22 +135,28 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ username, email, password }),
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Registration failed");
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
       }
 
-      return await res.json();
+      if (!res.ok || data?.error) {
+        throw new Error(resolveAuthError(res, data));
+      }
+
+      return data;
     } catch (err) {
-      console.error(err);
-      setError(err.message);
+      console.error("Register error:", err.message);
+      setError(err.message || "errors.registrationFailed");
       throw err;
     } finally {
       setLoading(false);
     }
   }
 
-  /* ---------- REFRESH ---------- */
+  /* ---------- REFRESH TOKEN ---------- */
   const refreshAccessToken = useCallback(async () => {
     if (!refreshToken) return;
 
@@ -123,12 +170,12 @@ export function AuthProvider({ children }) {
         }),
       });
 
-      if (!res.ok) {
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || data?.error) {
         logout();
         return;
       }
-
-      const data = await res.json();
 
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("refresh_token", data.refresh_token);
@@ -144,7 +191,7 @@ export function AuthProvider({ children }) {
         exp: payload.exp,
       });
     } catch (err) {
-      console.error("refresh error", err);
+      console.error("Refresh error:", err);
       logout();
     }
   }, [refreshToken]);
@@ -169,20 +216,20 @@ export function AuthProvider({ children }) {
     return () => clearTimeout(timeout);
   }, [user?.exp, refreshAccessToken]);
 
-  const value = {
-    user,
-    accessToken,
-    isAuthenticated,
-    loading,
-    error,
-    login,
-    logout,
-    register,
-    refreshAccessToken,
-  };
-
   return (
-      <AuthContext.Provider value={value}>
+      <AuthContext.Provider
+          value={{
+            user,
+            accessToken,
+            isAuthenticated,
+            loading,
+            error, // i18n KEY
+            login,
+            logout,
+            register,
+            refreshAccessToken,
+          }}
+      >
         {children}
       </AuthContext.Provider>
   );

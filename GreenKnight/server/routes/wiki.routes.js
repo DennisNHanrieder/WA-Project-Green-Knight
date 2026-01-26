@@ -5,7 +5,6 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { authenticateToken } from "../middleware/auth.js";
-import { authorizeRoles } from "../middleware/roles.js";
 
 const router = express.Router();
 
@@ -19,8 +18,8 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => {
+    destination: (_, __, cb) => cb(null, uploadDir),
+    filename: (_, file, cb) => {
         const safeName = file.originalname.replace(/\s+/g, "_");
         cb(null, Date.now() + "-" + safeName);
     },
@@ -28,151 +27,167 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-/* ---------- Auth erforderlich ---------- */
+/* ---------- AUTH ---------- */
 router.use(authenticateToken);
 
-/* =========================================================
-   GET /api/wiki → Alle Wiki-Einträge (Übersicht)
-   ========================================================= */
+/* ========================================================= */
+/* ======================== GET ALL ======================== */
+/* ========================================================= */
 router.get("/", async (req, res) => {
     try {
         const db = req.app.get("db");
 
         const entries = await db
             .collection("wiki")
-            .find({ userId: req.user.sub })
+            .find({})
             .sort({ createdAt: -1 })
             .toArray();
 
-        res.json(entries);
+        const mapped = entries.map((e) => ({
+            ...e,
+            _id: e._id.toString(),
+            userId: e.userId?.toString() || null,
+            thumbnailUrl: e.thumbnail
+                ? `/uploads/${e.thumbnail}`
+                : null,
+        }));
+
+        res.json(mapped);
     } catch (err) {
         console.error(err);
-        res.status(500).send("Fehler beim Laden der Wiki-Einträge");
+        res.status(500).json({ error: "Failed to load wiki entries" });
     }
 });
 
-/* =========================================================
-   GET /api/wiki/:id → Einzelner Eintrag (Detail)
-   ========================================================= */
+/* ========================================================= */
+/* ====================== GET ONE ========================== */
+/* ========================================================= */
 router.get("/:id", async (req, res) => {
     try {
         const db = req.app.get("db");
-        const id = new ObjectId(req.params.id);
 
-        const entry = await db.collection("wiki").findOne({ _id: id });
+        const entry = await db.collection("wiki").findOne({
+            _id: new ObjectId(req.params.id),
+        });
 
         if (!entry) {
-            return res.status(404).send("Eintrag nicht gefunden");
+            return res.status(404).json({ error: "Not found" });
         }
 
-        res.json(entry);
+        res.json({
+            ...entry,
+            _id: entry._id.toString(),
+            userId: entry.userId?.toString() || null,
+            thumbnailUrl: entry.thumbnail
+                ? `/uploads/${entry.thumbnail}`
+                : null,
+        });
     } catch (err) {
         console.error(err);
-        res.status(500).send("Fehler beim Laden des Eintrags");
+        res.status(500).json({ error: "Failed to load entry" });
     }
 });
 
-/* =========================================================
-   POST /api/wiki → Eintrag erstellen (mit Thumbnail)
-   ========================================================= */
-router.post(
-    "/",
-    upload.single("thumbnail"),
-    async (req, res) => {
-        try {
-            const db = req.app.get("db");
+/* ========================================================= */
+/* ======================== CREATE ========================= */
+/* ========================================================= */
+router.post("/", upload.single("thumbnail"), async (req, res) => {
+    try {
+        const db = req.app.get("db");
+        const user = req.user;
 
-            const thumbnailUrl = req.file
-                ? `/uploads/${req.file.filename}`
-                : null;
+        const entry = {
+            title: req.body.title,
+            content: req.body.content,
+            thumbnail: req.file?.filename || null,
+            userId: new ObjectId(user.id),
+            createdBy: user.username,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
 
-            const entry = {
-                title: req.body.title,
-                content: req.body.content,
-                thumbnailUrl,
-                userId: req.user.sub,
-                createdBy: req.user.username,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            };
+        const result = await db.collection("wiki").insertOne(entry);
 
-            const result = await db.collection("wiki").insertOne(entry);
-
-            res.status(201).json({ ...entry, _id: result.insertedId });
-        } catch (err) {
-            console.error(err);
-            res.status(500).send("Fehler beim Erstellen des Eintrags");
-        }
+        res.status(201).json({
+            ...entry,
+            _id: result.insertedId.toString(),
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to create entry" });
     }
-);
+});
 
-/* =========================================================
-   PUT /api/wiki/:id → Eintrag bearbeiten (optional Thumbnail)
-   ========================================================= */
-router.put(
-    "/:id",
-    authorizeRoles("admin", "user"),
-    upload.single("thumbnail"),
-    async (req, res) => {
-        try {
-            const db = req.app.get("db");
-            const id = new ObjectId(req.params.id);
+/* ========================================================= */
+/* ========================= UPDATE ======================== */
+/* ========================================================= */
+router.put("/:id", upload.single("thumbnail"), async (req, res) => {
+    try {
+        const db = req.app.get("db");
+        const user = req.user;
 
-            const update = {
-                updatedAt: new Date(),
-                updatedBy: req.user.username,
-            };
+        const entry = await db.collection("wiki").findOne({
+            _id: new ObjectId(req.params.id),
+        });
 
-            if (req.body.title !== undefined) update.title = req.body.title;
-            if (req.body.content !== undefined) update.content = req.body.content;
-            if (req.file) {
-                update.thumbnailUrl = `/uploads/${req.file.filename}`;
-            }
-
-            const result = await db.collection("wiki").updateOne(
-                { _id: id },
-                { $set: update }
-            );
-
-            if (result.matchedCount === 0) {
-                return res.status(404).send("Eintrag nicht gefunden");
-            }
-
-            const updatedEntry = await db
-                .collection("wiki")
-                .findOne({ _id: id });
-
-            res.json(updatedEntry);
-        } catch (err) {
-            console.error(err);
-            res.status(500).send("Fehler beim Aktualisieren des Eintrags");
+        if (!entry) {
+            return res.status(404).json({ error: "Not found" });
         }
-    }
-);
 
-/* =========================================================
-   DELETE /api/wiki/:id → Eintrag löschen
-   ========================================================= */
-router.delete(
-    "/:id",
-    authorizeRoles("admin", "user"),
-    async (req, res) => {
-        try {
-            const db = req.app.get("db");
-            const id = new ObjectId(req.params.id);
-
-            const result = await db.collection("wiki").deleteOne({ _id: id });
-
-            if (result.deletedCount === 0) {
-                return res.status(404).send("Eintrag nicht gefunden");
-            }
-
-            res.status(204).send();
-        } catch (err) {
-            console.error(err);
-            res.status(500).send("Fehler beim Löschen des Eintrags");
+        if (entry.userId.toString() !== user.id) {
+            return res.status(403).json({ error: "Not allowed" });
         }
+
+        const update = {
+            title: req.body.title,
+            content: req.body.content,
+            updatedAt: new Date(),
+            updatedBy: user.username,
+        };
+
+        if (req.file) {
+            update.thumbnail = req.file.filename;
+        }
+
+        await db.collection("wiki").updateOne(
+            { _id: entry._id },
+            { $set: update }
+        );
+
+        res.json({ ok: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to update entry" });
     }
-);
+});
+
+/* ========================================================= */
+/* ========================= DELETE ======================== */
+/* ========================================================= */
+router.delete("/:id", async (req, res) => {
+    try {
+        const db = req.app.get("db");
+        const user = req.user;
+
+        const entry = await db.collection("wiki").findOne({
+            _id: new ObjectId(req.params.id),
+        });
+
+        if (!entry) {
+            return res.status(404).json({ error: "Not found" });
+        }
+
+        if (entry.userId.toString() !== user.id) {
+            return res.status(403).json({ error: "Not allowed" });
+        }
+
+        await db.collection("wiki").deleteOne({ _id: entry._id });
+
+        res.status(204).end();
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to delete entry" });
+    }
+});
 
 export default router;

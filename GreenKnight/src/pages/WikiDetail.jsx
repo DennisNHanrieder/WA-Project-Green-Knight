@@ -39,6 +39,7 @@ export default function WikiDetail() {
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState({ title: "", content: "" });
 
+  /* ---------- LOAD ---------- */
   const loadEntry = async () => {
     if (!accessToken) return;
 
@@ -70,20 +71,16 @@ export default function WikiDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, id]);
 
-  const authHeadersJson = {
-    Authorization: `Bearer ${accessToken}`,
-    "Content-Type": "application/json",
-  };
-
+  /* ---------- SAVE ---------- */
   const handleSave = async () => {
     try {
       const res = await fetch(`/api/wiki/${id}`, {
         method: "PUT",
-        headers: authHeadersJson,
-        body: JSON.stringify({
-          title: editData.title,
-          content: editData.content,
-        }),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(editData),
       });
 
       if (!res.ok) {
@@ -99,6 +96,7 @@ export default function WikiDetail() {
     }
   };
 
+  /* ---------- DELETE ---------- */
   const handleDelete = async () => {
     try {
       const res = await fetch(`/api/wiki/${id}`, {
@@ -119,6 +117,9 @@ export default function WikiDetail() {
   };
 
   const imageSrc = entry?.thumbnailUrl || entry?.imageUrl || null;
+  const isOwner = entry?.userId === user?.id;
+
+  /* ========================================================= */
 
   return (
       <Container maxWidth="md">
@@ -146,10 +147,7 @@ export default function WikiDetail() {
                             label={t("wiki.addDialog.titleLabel")}
                             value={editData.title}
                             onChange={(e) =>
-                                setEditData((prev) => ({
-                                  ...prev,
-                                  title: e.target.value,
-                                }))
+                                setEditData((p) => ({ ...p, title: e.target.value }))
                             }
                             fullWidth
                         />
@@ -158,10 +156,7 @@ export default function WikiDetail() {
                             label={t("wiki.addDialog.contentLabel")}
                             value={editData.content}
                             onChange={(e) =>
-                                setEditData((prev) => ({
-                                  ...prev,
-                                  content: e.target.value,
-                                }))
+                                setEditData((p) => ({ ...p, content: e.target.value }))
                             }
                             multiline
                             minRows={6}
@@ -229,39 +224,27 @@ export default function WikiDetail() {
                             </Box>
                         )}
 
-                        <Typography
-                            variant="body1"
-                            sx={{ whiteSpace: "pre-wrap" }}
-                        >
+                        <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
                           {entry.content}
                         </Typography>
 
-                        <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                          {entry.userId === user?.id && (
+                        {isOwner && (
+                            <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
                               <Button
                                   variant="outlined"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    startEdit(entry);
-                                  }}
+                                  onClick={() => setEditing(true)}
                               >
                                 {t("wiki.edit")}
                               </Button>
-                          )}
-
-                          {entry.userId === user?.id && (
                               <Button
                                   variant="outlined"
                                   color="error"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDelete(entry._id);
-                                  }}
+                                  onClick={handleDelete}
                               >
                                 ❌ {t("wiki.delete")}
                               </Button>
-                          )}
-                        </Stack>
+                            </Stack>
+                        )}
                       </>
                   )}
                 </CardContent>

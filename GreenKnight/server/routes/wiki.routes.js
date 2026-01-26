@@ -28,72 +28,87 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+/* ---------- Auth erforderlich ---------- */
 router.use(authenticateToken);
 
-/* ---------- Alle Wiki-Einträge ---------- */
+/* =========================================================
+   GET /api/wiki → Alle Wiki-Einträge (Übersicht)
+   ========================================================= */
 router.get("/", async (req, res) => {
     try {
         const db = req.app.get("db");
-        const entries = await db.collection("wiki").find({}).toArray();
+
+        const entries = await db
+            .collection("wiki")
+            .find({ userId: req.user.sub })
+            .sort({ createdAt: -1 })
+            .toArray();
+
         res.json(entries);
     } catch (err) {
         console.error(err);
-        res.status(500).send();
+        res.status(500).send("Fehler beim Laden der Wiki-Einträge");
     }
 });
 
-/* ---------- Einzelner Eintrag ---------- */
+/* =========================================================
+   GET /api/wiki/:id → Einzelner Eintrag (Detail)
+   ========================================================= */
 router.get("/:id", async (req, res) => {
     try {
         const db = req.app.get("db");
-        const entry = await db
-            .collection("wiki")
-            .findOne({ _id: new ObjectId(req.params.id) });
+        const id = new ObjectId(req.params.id);
 
-        if (!entry) return res.status(404).send("Eintrag nicht gefunden");
+        const entry = await db.collection("wiki").findOne({ _id: id });
+
+        if (!entry) {
+            return res.status(404).send("Eintrag nicht gefunden");
+        }
+
         res.json(entry);
     } catch (err) {
         console.error(err);
-        res.status(500).send();
+        res.status(500).send("Fehler beim Laden des Eintrags");
     }
 });
 
-/* ---------- Eintrag erstellen ---------- */
+/* =========================================================
+   POST /api/wiki → Eintrag erstellen (mit Thumbnail)
+   ========================================================= */
 router.post(
     "/",
-    authorizeRoles("admin", "user"),
     upload.single("thumbnail"),
     async (req, res) => {
         try {
             const db = req.app.get("db");
-            const { title, content } = req.body;
 
-            if (!title || !content) {
-                return res.status(400).json({ error: "title und content erforderlich" });
-            }
+            const thumbnailUrl = req.file
+                ? `/uploads/${req.file.filename}`
+                : null;
 
-            const doc = {
-                title: title.trim(),
-                content: content.trim(),
-                thumbnailUrl: req.file ? `/uploads/${req.file.filename}` : null,
-                createdAt: new Date(),
+            const entry = {
+                title: req.body.title,
+                content: req.body.content,
+                thumbnailUrl,
+                userId: req.user.sub,
                 createdBy: req.user.username,
+                createdAt: new Date(),
+                updatedAt: new Date(),
             };
 
-            const result = await db.collection("wiki").insertOne(doc);
-            const inserted = await db
-                .collection("wiki")
-                .findOne({ _id: result.insertedId });
+            const result = await db.collection("wiki").insertOne(entry);
 
-            res.status(201).json(inserted);
+            res.status(201).json({ ...entry, _id: result.insertedId });
         } catch (err) {
             console.error(err);
-            res.status(500).send();
+            res.status(500).send("Fehler beim Erstellen des Eintrags");
         }
     }
 );
 
-/* ---------- Eintrag bearbeiten ---------- */
+/* =========================================================
+   PUT /api/wiki/:id → Eintrag bearbeiten (optional Thumbnail)
+   ========================================================= */
 router.put(
     "/:id",
     authorizeRoles("admin", "user"),
@@ -102,16 +117,17 @@ router.put(
         try {
             const db = req.app.get("db");
             const id = new ObjectId(req.params.id);
-            const { title, content } = req.body;
 
             const update = {
                 updatedAt: new Date(),
                 updatedBy: req.user.username,
             };
 
-            if (title !== undefined) update.title = title;
-            if (content !== undefined) update.content = content;
-            if (req.file) update.thumbnailUrl = `/uploads/${req.file.filename}`;
+            if (req.body.title !== undefined) update.title = req.body.title;
+            if (req.body.content !== undefined) update.content = req.body.content;
+            if (req.file) {
+                update.thumbnailUrl = `/uploads/${req.file.filename}`;
+            }
 
             const result = await db.collection("wiki").updateOne(
                 { _id: id },
@@ -122,16 +138,21 @@ router.put(
                 return res.status(404).send("Eintrag nicht gefunden");
             }
 
-            const updated = await db.collection("wiki").findOne({ _id: id });
-            res.json(updated);
+            const updatedEntry = await db
+                .collection("wiki")
+                .findOne({ _id: id });
+
+            res.json(updatedEntry);
         } catch (err) {
             console.error(err);
-            res.status(500).send();
+            res.status(500).send("Fehler beim Aktualisieren des Eintrags");
         }
     }
 );
 
-/* ---------- Eintrag löschen ---------- */
+/* =========================================================
+   DELETE /api/wiki/:id → Eintrag löschen
+   ========================================================= */
 router.delete(
     "/:id",
     authorizeRoles("admin", "user"),
@@ -141,6 +162,7 @@ router.delete(
             const id = new ObjectId(req.params.id);
 
             const result = await db.collection("wiki").deleteOne({ _id: id });
+
             if (result.deletedCount === 0) {
                 return res.status(404).send("Eintrag nicht gefunden");
             }
@@ -148,7 +170,7 @@ router.delete(
             res.status(204).send();
         } catch (err) {
             console.error(err);
-            res.status(500).send();
+            res.status(500).send("Fehler beim Löschen des Eintrags");
         }
     }
 );

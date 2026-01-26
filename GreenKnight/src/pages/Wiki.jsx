@@ -1,4 +1,3 @@
-// src/pages/Wiki.jsx
 import { useEffect, useState } from "react";
 import {
   Typography,
@@ -37,25 +36,20 @@ export default function Wiki() {
   const navigate = useNavigate();
 
   const [entries, setEntries] = useState([]);
-  const [newEntry, setNewEntry] = useState({ title: "", content: "" });
-
-  const [editing, setEditing] = useState(null);
-  const [editData, setEditData] = useState({ title: "", content: "" });
-
   const [error, setError] = useState(null);
 
-  // Add-Dialog
+  // Add
   const [addOpen, setAddOpen] = useState(false);
-
-  // Thumbnail Upload (Add-Dialog)
+  const [newEntry, setNewEntry] = useState({ title: "", content: "" });
   const [thumbnail, setThumbnail] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
 
-  const authHeadersJson = {
-    Authorization: `Bearer ${accessToken}`,
-    "Content-Type": "application/json",
-  };
+  // Edit
+  const [editing, setEditing] = useState(null);
+  const [editData, setEditData] = useState({ title: "", content: "" });
+  const [editThumbnail, setEditThumbnail] = useState(null);
 
+  /* -------------------------------------------------- */
   const resetAddForm = () => {
     setNewEntry({ title: "", content: "" });
     if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
@@ -71,10 +65,7 @@ export default function Wiki() {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Fehler ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`Fehler ${res.status}`);
 
       const data = await res.json();
       setEntries(Array.isArray(data) ? data : []);
@@ -90,6 +81,7 @@ export default function Wiki() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
 
+  /* ------------------- CREATE ------------------- */
   const handleCreate = async () => {
     if (!newEntry.title.trim() || !newEntry.content.trim()) return;
 
@@ -105,10 +97,7 @@ export default function Wiki() {
         body: formData,
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Fehler ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`Fehler ${res.status}`);
 
       resetAddForm();
       setAddOpen(false);
@@ -119,29 +108,35 @@ export default function Wiki() {
     }
   };
 
+  /* ------------------- EDIT ------------------- */
   const startEdit = (entry) => {
     setEditing(entry._id);
-    setEditData({ title: entry.title || "", content: entry.content || "" });
+    setEditData({
+      title: entry.title || "",
+      content: entry.content || "",
+    });
+    setEditThumbnail(null);
   };
 
   const handleSaveEdit = async (id) => {
     try {
-      const res = await fetch(`/api/wiki/${id}`, {
-        method: "PUT",
-        headers: authHeadersJson,
-        body: JSON.stringify({
-          title: editData.title,
-          content: editData.content,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Fehler ${res.status}`);
+      const formData = new FormData();
+      formData.append("title", editData.title);
+      formData.append("content", editData.content);
+      if (editThumbnail) {
+        formData.append("thumbnail", editThumbnail);
       }
 
+      const res = await fetch(`/api/wiki/${id}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error(`Fehler ${res.status}`);
+
       setEditing(null);
-      setEditData({ title: "", content: "" });
+      setEditThumbnail(null);
       await loadEntries();
     } catch (err) {
       console.error(err);
@@ -149,6 +144,7 @@ export default function Wiki() {
     }
   };
 
+  /* ------------------- DELETE ------------------- */
   const handleDelete = async (id) => {
     try {
       const res = await fetch(`/api/wiki/${id}`, {
@@ -157,8 +153,7 @@ export default function Wiki() {
       });
 
       if (!res.ok && res.status !== 204) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Fehler ${res.status}`);
+        throw new Error(`Fehler ${res.status}`);
       }
 
       await loadEntries();
@@ -168,12 +163,12 @@ export default function Wiki() {
     }
   };
 
+  /* ========================================================= */
+
   return (
       <Container maxWidth="md">
         <Stack spacing={2} sx={{ py: 3 }}>
-          <Typography variant="h4" gutterBottom>
-            {t("wiki.title")}
-          </Typography>
+          <Typography variant="h4">{t("wiki.title")}</Typography>
 
           {error && (
               <Typography color="error" variant="body2">
@@ -181,42 +176,27 @@ export default function Wiki() {
               </Typography>
           )}
 
-          <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-            <Button
-                variant="contained"
-                onClick={() => {
-                  resetAddForm();
-                  setAddOpen(true);
-                }}
-            >
-              {t("wiki.add")}
-            </Button>
-          </Stack>
-
-          {/* Add Dialog */}
-          <Dialog
-              open={addOpen}
-              onClose={() => {
+          <Button
+              variant="contained"
+              onClick={() => {
                 resetAddForm();
-                setAddOpen(false);
+                setAddOpen(true);
               }}
-              fullWidth
-              maxWidth="sm"
           >
-            <DialogTitle>{t("wiki.addDialog.title")}</DialogTitle>
+            {t("wiki.add")}
+          </Button>
 
-            <DialogContent sx={{ pt: 1 }}>
+          {/* ================= ADD DIALOG ================= */}
+          <Dialog open={addOpen} onClose={() => setAddOpen(false)} fullWidth>
+            <DialogTitle>{t("wiki.addDialog.title")}</DialogTitle>
+            <DialogContent>
               <Stack spacing={2} sx={{ mt: 1 }}>
                 <TextField
                     label={t("wiki.addDialog.titleLabel")}
                     value={newEntry.title}
                     onChange={(e) =>
-                        setNewEntry((prev) => ({
-                          ...prev,
-                          title: e.target.value,
-                        }))
+                        setNewEntry((p) => ({ ...p, title: e.target.value }))
                     }
-                    autoFocus
                     fullWidth
                 />
 
@@ -226,15 +206,12 @@ export default function Wiki() {
                     minRows={6}
                     value={newEntry.content}
                     onChange={(e) =>
-                        setNewEntry((prev) => ({
-                          ...prev,
-                          content: e.target.value,
-                        }))
+                        setNewEntry((p) => ({ ...p, content: e.target.value }))
                     }
                     fullWidth
                 />
 
-                <Button variant="outlined" component="label">
+                <Button component="label" variant="outlined">
                   {t("wiki.addDialog.chooseThumbnail")}
                   <input
                       type="file"
@@ -242,67 +219,39 @@ export default function Wiki() {
                       accept="image/*"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (!file) {
-                          if (thumbnailPreview)
-                            URL.revokeObjectURL(thumbnailPreview);
-                          setThumbnail(null);
-                          setThumbnailPreview(null);
-                          return;
-                        }
-
-                        if (thumbnailPreview)
-                          URL.revokeObjectURL(thumbnailPreview);
-
+                        if (!file) return;
+                        if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
                         setThumbnail(file);
                         setThumbnailPreview(URL.createObjectURL(file));
                       }}
                   />
                 </Button>
 
-                {thumbnail && (
-                    <Typography variant="body2" color="text.secondary">
-                      {t("wiki.addDialog.selected")}: {thumbnail.name}
-                    </Typography>
-                )}
-
                 {thumbnailPreview && (
-                    <Box sx={{ mt: 1 }}>
-                      <img
-                          src={thumbnailPreview}
-                          alt={t("wiki.addDialog.selected")}
-                          style={{
-                            width: "100%",
-                            maxHeight: 220,
-                            objectFit: "cover",
-                            borderRadius: 8,
-                          }}
-                      />
-                    </Box>
+                    <img
+                        src={thumbnailPreview}
+                        alt="preview"
+                        style={{
+                          width: "100%",
+                          maxHeight: 220,
+                          objectFit: "cover",
+                          borderRadius: 8,
+                        }}
+                    />
                 )}
               </Stack>
             </DialogContent>
-
             <DialogActions>
-              <Button
-                  onClick={() => {
-                    resetAddForm();
-                    setAddOpen(false);
-                  }}
-              >
+              <Button onClick={() => setAddOpen(false)}>
                 {t("wiki.cancel")}
               </Button>
-
-              <Button
-                  variant="contained"
-                  disabled={!newEntry.title.trim() || !newEntry.content.trim()}
-                  onClick={handleCreate}
-              >
+              <Button variant="contained" onClick={handleCreate}>
                 {t("wiki.save")}
               </Button>
             </DialogActions>
           </Dialog>
 
-          {/* Entries */}
+          {/* ================= ENTRIES ================= */}
           {entries.map((entry) => (
               <Card
                   key={entry._id}
@@ -310,47 +259,63 @@ export default function Wiki() {
                   onClick={() => navigate(`/wiki/${entry._id}`)}
               >
                 <CardContent>
+                  {entry.thumbnailUrl && (
+                      <Box sx={{ mb: 1 }}>
+                        <img
+                            src={entry.thumbnailUrl}
+                            alt={entry.title}
+                            style={{
+                              width: "100%",
+                              maxHeight: 220,
+                              objectFit: "cover",
+                              borderRadius: 8,
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                      </Box>
+                  )}
+
                   {editing === entry._id ? (
-                      <Stack spacing={1} onClick={(e) => e.stopPropagation()}>
+                      <Stack spacing={2} onClick={(e) => e.stopPropagation()}>
                         <TextField
                             label={t("wiki.addDialog.titleLabel")}
                             value={editData.title}
                             onChange={(e) =>
-                                setEditData((prev) => ({
-                                  ...prev,
-                                  title: e.target.value,
-                                }))
+                                setEditData((p) => ({ ...p, title: e.target.value }))
                             }
                         />
                         <TextField
                             label={t("wiki.addDialog.contentLabel")}
                             multiline
-                            minRows={3}
+                            minRows={4}
                             value={editData.content}
                             onChange={(e) =>
-                                setEditData((prev) => ({
-                                  ...prev,
-                                  content: e.target.value,
-                                }))
+                                setEditData((p) => ({ ...p, content: e.target.value }))
                             }
                         />
+
+                        <Button component="label" variant="outlined">
+                          Bild ändern
+                          <input
+                              type="file"
+                              hidden
+                              accept="image/*"
+                              onChange={(e) =>
+                                  setEditThumbnail(e.target.files?.[0] || null)
+                              }
+                          />
+                        </Button>
+
                         <Stack direction="row" spacing={1}>
                           <Button
                               variant="contained"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSaveEdit(entry._id);
-                              }}
+                              onClick={() => handleSaveEdit(entry._id)}
                           >
                             {t("wiki.save")}
                           </Button>
                           <Button
                               variant="outlined"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditing(null);
-                                setEditData({ title: "", content: "" });
-                              }}
+                              onClick={() => setEditing(null)}
                           >
                             {t("wiki.cancel")}
                           </Button>
@@ -360,50 +325,18 @@ export default function Wiki() {
                       <>
                         <Typography variant="h6">{entry.title}</Typography>
 
-                        <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ mb: 1 }}
-                        >
+                        <Typography variant="body2" color="text.secondary">
                           {t("wiki.meta.createdBy")}{" "}
-                          <b>
-                            {entry.createdBy || t("wiki.meta.unknown")}
-                          </b>{" "}
-                          •{" "}
-                          {formatDateTime(entry.createdAt, i18n.language)} •{" "}
-                          {t("wiki.meta.updatedBy")}{" "}
-                          <b>
-                            {entry.updatedBy || "—"}
-                          </b>{" "}
-                          •{" "}
-                          {formatDateTime(entry.updatedAt, i18n.language)}
+                          <b>{entry.createdBy || "—"}</b> •{" "}
+                          {formatDateTime(entry.createdAt, i18n.language)}
                         </Typography>
 
-                        <Typography
-                            variant="body1"
-                            sx={{ whiteSpace: "pre-wrap" }}
-                        >
+                        <Typography sx={{ mt: 1, whiteSpace: "pre-wrap" }}>
                           {entry.content}
                         </Typography>
 
-                        {(entry.thumbnailUrl || entry.imageUrl) && (
-                            <Box sx={{ mt: 1, mb: 1 }}>
-                              <img
-                                  src={entry.thumbnailUrl || entry.imageUrl}
-                                  alt={entry.title}
-                                  style={{
-                                    width: 180,
-                                    height: 120,
-                                    objectFit: "cover",
-                                    borderRadius: 8,
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                              />
-                            </Box>
-                        )}
-
-                        <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                          {entry.userId === user?.id && (
+                        {entry.userId === user?.id && (
+                            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                               <Button
                                   variant="outlined"
                                   onClick={(e) => {
@@ -413,9 +346,6 @@ export default function Wiki() {
                               >
                                 {t("wiki.edit")}
                               </Button>
-                          )}
-
-                          {entry.userId === user?.id && (
                               <Button
                                   variant="outlined"
                                   color="error"
@@ -426,9 +356,8 @@ export default function Wiki() {
                               >
                                 ❌ {t("wiki.delete")}
                               </Button>
-                          )}
-
-                        </Stack>
+                            </Stack>
+                        )}
                       </>
                   )}
                 </CardContent>

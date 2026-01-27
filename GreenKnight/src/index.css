@@ -1,0 +1,82 @@
+/* === Green Knight Theme === */
+
+:root {
+  --knight-primary: #2E7D32;       /* Ritter-Grün */
+  --knight-primary-dark: #1B5E20;  /* Dunkelgrün Hover */
+  --knight-gold: #C9A227;          /* Gold-Akzent */
+}
+
+/* Hintergrund sauber weiß */
+body {
+  background-color: #ffffff;
+}
+
+/* ---------- AppBar / Top Navigation (Material UI) ---------- */
+.MuiAppBar-colorPrimary {
+  background-color: var(--knight-primary) !important;
+  border-bottom: 3px solid var(--knight-gold);
+}
+
+.MuiAppBar-colorPrimary .MuiTypography-root,
+.MuiAppBar-colorPrimary .MuiButtonBase-root,
+.MuiAppBar-colorPrimary a {
+  color: white !important;
+  font-weight: 600;
+}
+
+.MuiTabs-indicator {
+  background-color: var(--knight-gold) !important;
+}
+
+/* ---------- Buttons ---------- */
+.MuiButton-containedPrimary {
+  background-color: var(--knight-primary) !important;
+  border-color: var(--knight-primary) !important;
+  color: white !important;
+}
+
+.MuiButton-containedPrimary:hover {
+  background-color: var(--knight-primary-dark) !important;
+}
+
+.MuiButton-outlinedPrimary,
+.MuiButton-textPrimary {
+  color: var(--knight-primary) !important;
+  border-color: var(--knight-primary) !important;
+}
+
+.MuiButton-outlinedPrimary:hover {
+  border-color: var(--knight-primary-dark) !important;
+}
+
+/* ---------- Cards / Panels ---------- */
+.MuiPaper-elevation1 {
+  border-left: 4px solid var(--knight-primary);
+  border-radius: 10px;
+}
+
+/* ---------- Inputs ---------- */
+.MuiOutlinedInput-notchedOutline {
+  border-color: var(--knight-primary) !important;
+}
+
+.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--knight-gold) !important;
+  box-shadow: 0 0 4px rgba(201, 162, 39, 0.5);
+}
+
+.MuiInputLabel-root.Mui-focused {
+  color: var(--knight-primary) !important;
+}
+
+/* ---------- Headings ---------- */
+h1, h2, h3 {
+  color: var(--knight-primary);
+  font-weight: 700;
+  font-family: "Merriweather", serif;
+}
+
+/* Checkbox Farbe */
+.MuiCheckbox-colorPrimary.Mui-checked {
+  color: var(--knight-primary) !important;
+}
